@@ -2,7 +2,7 @@ import { randomBytes } from 'crypto'
 import EventEmitter from 'events'
 import { KeyPair, ProcessPacket, TLSClientOptions, TLSEventEmitter, TLSHandshakeOptions, TLSSessionTicket, X509Certificate } from './types'
 import { computeSharedKeys, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
-import { toHexStringWithWhitespace } from './utils/generics'
+import { concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
 import { CURVES } from './utils/curve'
 import LOGGER from './utils/logger'
 import { makeQueue } from './utils/make-queue'
@@ -20,10 +20,10 @@ import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-reco
 const RECORD_LENGTH_BYTES = 3
 
 type Record = {
-	record: Buffer
+	record: Uint8Array
 	contentType: number | undefined
-	authTag: Buffer | undefined
-	ciphertext: Buffer | undefined
+	authTag: Uint8Array | undefined
+	ciphertext: Uint8Array | undefined
 }
 
 type CurveType = keyof typeof CURVES
@@ -52,17 +52,17 @@ export function makeTLSClient({
 			return acc
 		}, {} as { [C in CurveType]: KeyPair })
 
-	let sessionId = Buffer.alloc(0)
-	let handshakeMsgs: Buffer[] = []
+	let sessionId = new Uint8Array()
+	let handshakeMsgs: Uint8Array[] = []
 	let cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP | undefined = undefined
-	let earlySecret: Buffer | undefined = undefined
+	let earlySecret: Uint8Array | undefined = undefined
 	let keys: SharedKeyData | undefined = undefined
 	let recordSendCount = 0
 	let recordRecvCount = 0
 	let keyType: keyof typeof SUPPORTED_KEY_TYPE_MAP | undefined = undefined
 
 	let certificates: X509Certificate[] = []
-	let handshakePacketStream = Buffer.alloc(0)
+	let handshakePacketStream = new Uint8Array()
 	let clientCertificateRequested = false
 
 	const processPacket: ProcessPacket = (type, { header, content, authTag }) => {
@@ -74,7 +74,7 @@ export function makeTLSClient({
 
 			let data = content
 			let contentType: number | undefined
-			let ciphertext: Buffer | undefined
+			let ciphertext: Uint8Array | undefined
 			switch (type) {
 			case PACKET_TYPE.HELLO:
 				break
@@ -149,7 +149,7 @@ export function makeTLSClient({
 		}: Record
 	) {
 		if(!contentType || contentType === CONTENT_TYPE_MAP.HANDSHAKE) {
-			handshakePacketStream = Buffer.concat([ handshakePacketStream, record ])
+			handshakePacketStream = concatenateUint8Arrays([ handshakePacketStream, record ])
 			let data = readPacket()
 			while(data) {
 				const { type, content } = data
@@ -283,13 +283,13 @@ export function makeTLSClient({
 			await handleAlert(record)
 		} else {
 			logger.warn(
-				{ record: record.toString('hex'), contentType: contentType.toString(16) },
+				{ record: record, contentType: contentType.toString(16) },
 				'cannot process record'
 			)
 		}
 	}
 
-	async function handleAlert(content: Buffer) {
+	async function handleAlert(content: Uint8Array) {
 		const { level, description } = parseTlsAlert(content)
 
 		const msg = (
@@ -316,9 +316,9 @@ export function makeTLSClient({
 
 	async function sendClientCertificate() {
 		if(clientCertificateRequested) {
-			const clientZeroCert = Buffer.concat([
-				Buffer.from([ SUPPORTED_RECORD_TYPE_MAP.CERTIFICATE, 0x00 ]),
-				packWithLength(Buffer.from([0, 0, 0, 0]))])
+			const clientZeroCert = concatenateUint8Arrays([
+				new Uint8Array([ SUPPORTED_RECORD_TYPE_MAP.CERTIFICATE, 0x00 ]),
+				packWithLength(new Uint8Array([0, 0, 0, 0]))])
 
 			logger.trace(
 				{ cert: toHexStringWithWhitespace(clientZeroCert) },
@@ -333,7 +333,7 @@ export function makeTLSClient({
 		}
 	}
 
-	async function processServerFinish(serverFinish: Buffer) {
+	async function processServerFinish(serverFinish: Uint8Array) {
 		logger.debug('received server finish')
 
 		//derive server keys now to streamline handshake messages handling
@@ -509,7 +509,7 @@ export function makeTLSClient({
 				data: clientHello,
 			})
 		},
-		handleRawData(data: Buffer) {
+		handleRawData(data: Uint8Array) {
 			processor.onData(data, processPacket)
 		},
 		async updateTrafficKeys(requestUpdateFromServer = false) {
@@ -541,7 +541,7 @@ export function makeTLSClient({
 			logger.info('updated client traffic keys')
 		},
 		processPacket,
-		write(data: Buffer) {
+		write(data: Uint8Array) {
 			if(!handshakeDone) {
 				throw new Error('Handshake not done')
 			}

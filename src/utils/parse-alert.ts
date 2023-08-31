@@ -1,4 +1,5 @@
 import { ALERT_DESCRIPTION, ALERT_LEVEL } from './constants'
+import { uint8ArrayToDataView } from './generics'
 
 const ALERT_LEVEL_ENTRIES = Object
 	.entries(ALERT_LEVEL) as [keyof typeof ALERT_LEVEL, number][]
@@ -9,9 +10,10 @@ const ALERT_DESCRIPTION_ENTRIES = Object
 /**
  * Parse a TLS alert message
  */
-export function parseTlsAlert(buffer: Buffer) {
-	const level = buffer.readUInt8(0)
-	const description = buffer.readUInt8(1)
+export function parseTlsAlert(buffer: Uint8Array) {
+	const view = uint8ArrayToDataView(buffer)
+	const level = view.getUint8(0)
+	const description = view.getUint8(1)
 
 	const levelStr = ALERT_LEVEL_ENTRIES
 		.find(([, value]) => value === level)?.[0]

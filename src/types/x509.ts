@@ -1,11 +1,10 @@
 export type PrivateKey = string
 
 /**
- * public key in PEM/DER format
- * PEM => string
- * DER => Buffer
+ * public key in DER format
+ * DER => Uint8Array
  */
-export type CertificatePublicKey = string | Buffer
+export type CertificatePublicKey = Uint8Array
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type X509Certificate<T = any> = {
@@ -19,14 +18,4 @@ export type X509Certificate<T = any> = {
 	verifyIssued(otherCert: X509Certificate<T>): boolean | Promise<boolean>
 
 	serialiseToPem(): string
-}
-
-export type KeyPair = {
-	pubKey: Buffer
-	privKey: Buffer
-}
-
-export type CurveImplementation = {
-	generateKeyPair(): KeyPair
-	calculateSharedKey(privateKey: Buffer, publicKey: Buffer): Buffer
 }

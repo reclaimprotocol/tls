@@ -4,6 +4,7 @@ import { makeTLSClient } from '../'
 import { TLSPresharedKey, TLSSessionTicket } from '../types'
 import { createMockTLSServer } from './mock-tls-server'
 import { delay } from './utils'
+import { strToUint8Array } from '../utils/generics'
 
 const chance = new Chance()
 
@@ -43,10 +44,10 @@ describe('TLS Tests', () => {
 			await delay(100)
 		}
 
-		const data = Buffer.from('hello world')
+		const data = strToUint8Array('hello world')
 		tls.write(data)
 
-		const recvData = await new Promise<Buffer>(resolve => {
+		const recvData = await new Promise<Uint8Array>(resolve => {
 			tls.ev.on('data', data => {
 				resolve(data.plaintext)
 			})
@@ -83,10 +84,10 @@ describe('TLS Tests', () => {
 			}
 		}
 
-		const data = Buffer.from('hello resumed session')
+		const data = strToUint8Array('hello resumed session')
 		tls.write(data)
 
-		const recvData = await new Promise<Buffer>(resolve => {
+		const recvData = await new Promise<Uint8Array>(resolve => {
 			tls.ev.on('data', data => {
 				resolve(data.plaintext)
 			})
@@ -126,10 +127,10 @@ describe('TLS Tests', () => {
 		const oldKey = tls.getKeys()?.clientEncKey
 		await tls.updateTrafficKeys(true)
 
-		const data = Buffer.from('hello world')
+		const data = strToUint8Array('hello world')
 		await tls.write(data)
 
-		const recvData = await new Promise<Buffer>(resolve => {
+		const recvData = await new Promise<Uint8Array>(resolve => {
 			tls.ev.on('data', data => {
 				resolve(data.plaintext)
 			})

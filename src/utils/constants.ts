@@ -1,15 +1,16 @@
 import { getWebCrypto } from '../utils/x509'
+import { concatenateUint8Arrays } from './generics'
 
 // TLS 1.2 -- used in header of all messages
-export const LEGACY_PROTOCOL_VERSION = Buffer.from([ 0x03, 0x03 ])
+export const LEGACY_PROTOCOL_VERSION = new Uint8Array([ 0x03, 0x03 ])
 // TLS 1.3
-export const CURRENT_PROTOCOL_VERSION = Buffer.from([ 0x03, 0x04 ])
+export const CURRENT_PROTOCOL_VERSION = new Uint8Array([ 0x03, 0x04 ])
 // no compression, as TLS 1.3 does not support it
-export const COMPRESSION_MODE = Buffer.from([ 0x01, 0x00 ])
+export const COMPRESSION_MODE = new Uint8Array([ 0x01, 0x00 ])
 
 export const SUPPORTED_KEY_TYPE_MAP = {
-	SECP384R1: Buffer.from([ 0x00, 0x18 ]),
-	X25519: Buffer.from([ 0x00, 0x1d ]),
+	SECP384R1: new Uint8Array([ 0x00, 0x18 ]),
+	X25519: new Uint8Array([ 0x00, 0x1d ]),
 }
 
 export const SUPPORTED_RECORD_TYPE_MAP = {
@@ -38,21 +39,21 @@ export const SUPPORTED_KEY_TYPES = Object.keys(SUPPORTED_KEY_TYPE_MAP) as (keyof
 
 export const SUPPORTED_CIPHER_SUITE_MAP = {
 	TLS_CHACHA20_POLY1305_SHA256:{
-		identifier: Buffer.from([0x13, 0x03]),
+		identifier: new Uint8Array([0x13, 0x03]),
 		keyLength: 32,
 		hashLength: 32,
 		hashAlgorithm: 'sha256',
 		cipher: 'chacha20-poly1305'
 	},
 	TLS_AES_256_GCM_SHA384: {
-		identifier: Buffer.from([ 0x13, 0x02 ]),
+		identifier: new Uint8Array([ 0x13, 0x02 ]),
 		keyLength: 32,
 		hashLength: 48,
 		hashAlgorithm: 'sha384',
 		cipher: 'aes-256-gcm',
 	},
 	TLS_AES_128_GCM_SHA256: {
-		identifier: Buffer.from([ 0x13, 0x01 ]),
+		identifier: new Uint8Array([ 0x13, 0x01 ]),
 		keyLength: 16,
 		hashLength: 32,
 		hashAlgorithm: 'sha256',
@@ -103,18 +104,18 @@ type SignatureAlgType = 'RSA_PSS_RSAE_SHA256'
 	| 'ECDSA_SECP256R1_SHA256'
 
 type SupportedSignatureAlg = {
-	identifier: Buffer
-	verify(data: Buffer, signature: Buffer, publicKey: Buffer | string): boolean | Promise<boolean>
+	identifier: Uint8Array
+	verify(data: Uint8Array, signature: Uint8Array, publicKey: Uint8Array): boolean | Promise<boolean>
 }
 
 export const SUPPORTED_SIGNATURE_ALGS_MAP: { [K in SignatureAlgType]: SupportedSignatureAlg } = {
 	RSA_PSS_RSAE_SHA256: {
-		identifier: Buffer.from([ 0x08, 0x04 ]),
+		identifier: new Uint8Array([ 0x08, 0x04 ]),
 		async verify(data, signature, publicKey) {
 			const { subtle } = getWebCrypto()
 			const pubKey = await subtle.importKey(
 				'spki',
-				Buffer.from(publicKey),
+				publicKey,
 				{
 					name: 'RSA-PSS',
 					hash: 'SHA-256'
@@ -137,12 +138,12 @@ export const SUPPORTED_SIGNATURE_ALGS_MAP: { [K in SignatureAlgType]: SupportedS
 		},
 	},
 	ECDSA_SECP256R1_SHA256: {
-		identifier: Buffer.from([ 0x04, 0x03 ]),
+		identifier: new Uint8Array([ 0x04, 0x03 ]),
 		async verify(data, signature, publicKey) {
 			const { subtle } = getWebCrypto()
 			const pubKey = await subtle.importKey(
 				'spki',
-				Buffer.from(publicKey),
+				publicKey,
 				{
 					name: 'ECDSA',
 					namedCurve: 'P-256',
@@ -166,7 +167,7 @@ export const SUPPORTED_SIGNATURE_ALGS_MAP: { [K in SignatureAlgType]: SupportedS
 			return result
 
 			// mostly from ChatGPT
-			function convertASN1toRS(signatureBytes: Buffer) {
+			function convertASN1toRS(signatureBytes: Uint8Array) {
 				// Check if the signature is in the expected ASN.1 format (SEQUENCE)
 				if(signatureBytes[0] !== 0x30) {
 					throw new Error('Invalid ASN.1 signature format.')
@@ -188,17 +189,17 @@ export const SUPPORTED_SIGNATURE_ALGS_MAP: { [K in SignatureAlgType]: SupportedS
 				r = cleanBigNum(r)
 				s = cleanBigNum(s)
 
-				return Buffer.concat([ r, s ])
+				return concatenateUint8Arrays([ r, s ])
 			}
 
-			function cleanBigNum(bn: Buffer) {
+			function cleanBigNum(bn: Uint8Array) {
 				// Trim leading zeros
 				if(bn[0] === 0x00) {
 					return bn.slice(1)
 				}
 
-				bn = Buffer.concat([
-					Buffer.alloc(32 - bn.length, 0),
+				bn = concatenateUint8Arrays([
+					new Uint8Array(32 - bn.length).fill(0),
 					bn
 				])
 
@@ -207,13 +208,13 @@ export const SUPPORTED_SIGNATURE_ALGS_MAP: { [K in SignatureAlgType]: SupportedS
 		}
 	},
 	ED25519: {
-		identifier: Buffer.from([ 0x08, 0x07 ]),
+		identifier: new Uint8Array([ 0x08, 0x07 ]),
 		verify() {
 			throw new Error('Not implemented')
 		}
 	},
 	RSA_PKCS1_SHA512: {
-		identifier: Buffer.from([ 0x06, 0x01 ]),
+		identifier: new Uint8Array([ 0x06, 0x01 ]),
 		verify() {
 			throw new Error('Not implemented')
 		}

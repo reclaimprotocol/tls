@@ -8,6 +8,7 @@ import { loadX509FromPem } from '../utils/x509'
 import { CURVES } from '../utils/curve'
 import { computeSharedKeys } from '../utils/decryption-utils'
 import { bufferFromHexStringWithWhitespace, toHexStringWithWhitespace } from '../utils/generics'
+import { expectBuffsEq } from './utils'
 
 const curve = CURVES['X25519']
 
@@ -20,7 +21,7 @@ describe('Crypto Tests', () => {
 			Buffer.from('9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615', 'hex'),
 		)
 
-		expect(masterKey.toString('hex')).toEqual(
+		expect(toHexStringWithWhitespace(masterKey, '')).toEqual(
 			'df4a291baa1eb7cfa6934b29b474baad2697e29f1f920dcc77c8a0a088447624'
 		)
 
@@ -38,13 +39,13 @@ describe('Crypto Tests', () => {
 			cipherSuite: 'TLS_CHACHA20_POLY1305_SHA256'
 		})
 
-		expect(result.masterSecret.toString('hex')).toEqual(
+		expect(toHexStringWithWhitespace(result.masterSecret, '')).toEqual(
 			'fb9fc80689b3a5d02c33243bf69a1b1b20705588a794304a6e7120155edf149a'
 		)
-		expect(result.clientSecret.toString('hex')).toEqual(
+		expect(toHexStringWithWhitespace(result.clientSecret, '')).toEqual(
 			'39df949cf723c7b3a398bfc9902837f9e762c632e868131b19d946b9ec01bb78'
 		)
-		expect(result.serverIv.toString('hex')).toEqual(
+		expect(toHexStringWithWhitespace(result.serverIv, '')).toEqual(
 			'151187a208b0f49ba2a81084'
 		)
 	})
@@ -55,7 +56,7 @@ describe('Crypto Tests', () => {
 			Buffer.from('9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615', 'hex'),
 		)
 
-		expect(masterKey.toString('hex')).toEqual(
+		expect(toHexStringWithWhitespace(masterKey, '')).toEqual(
 			'df4a291baa1eb7cfa6934b29b474baad2697e29f1f920dcc77c8a0a088447624'
 		)
 
@@ -125,7 +126,7 @@ describe('Crypto Tests', () => {
 			// which should give us the session ticket
 			expectReadWithLength(ticketPacked.slice(1), 3)
 		)
-		expect(parsed.nonce.toString('hex')).toEqual('0000')
+		expect(Array.from(parsed.nonce)).toEqual([0, 0])
 
 		const ticketData = getPskFromTicket(parsed, {
 			masterKey: bufferFromHexStringWithWhitespace(
@@ -183,7 +184,7 @@ describe('Crypto Tests', () => {
 		const binder = computeBinderSuffix(helloPrefix, ticketData)
 		binder.copy(ext, ext.length - binder.length)
 
-		expect(ext.toString('hex')).toEqual(expectedExtBytes.toString('hex'))
+		expectBuffsEq(ext, expectedExtBytes)
 	})
 
 	// from: https://datatracker.ietf.org/doc/html/draft-ietf-tls-tls13-vectors

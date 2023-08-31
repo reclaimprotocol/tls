@@ -1,6 +1,7 @@
 import { makeMessageProcessor } from '../utils/packets'
 import { TLSPacket } from '../types'
 import logger from '../utils/logger'
+import { expectBuffsEq } from './utils'
 
 describe('TLS Message Processor', () => {
 
@@ -10,8 +11,8 @@ describe('TLS Message Processor', () => {
 			Buffer.from('15030300050101010101', 'hex')
 		)
 		expect(pkts.length).toBe(1)
-		expect(pkts[0].header).toEqual(Buffer.from('1503030005', 'hex'))
-		expect(pkts[0].content).toEqual(Buffer.from('0101010101', 'hex'))
+		expectBuffsEq(pkts[0].header, Buffer.from('1503030005', 'hex'))
+		expectBuffsEq(pkts[0].content, Buffer.from('0101010101', 'hex'))
 	})
 
 	it('should process a message byte-by-byte', () => {
@@ -23,7 +24,7 @@ describe('TLS Message Processor', () => {
 				expect(pkts.length).toBe(0)
 			} else {
 				expect(pkts.length).toBe(1)
-				expect(pkts[0].content).toEqual(Buffer.from('0101010101', 'hex'))
+				expectBuffsEq(pkts[0].content, Buffer.from('0101010101', 'hex'))
 			}
 		}
 	})
@@ -38,8 +39,8 @@ describe('TLS Message Processor', () => {
 			Buffer.concat(buffers)
 		)
 		expect(pkts.length).toBe(2)
-		expect(pkts[0].content).toEqual(Buffer.from('0101010101', 'hex'))
-		expect(pkts[1].content).toEqual(Buffer.from('010101010101', 'hex'))
+		expectBuffsEq(pkts[0].content, Buffer.from('0101010101', 'hex'))
+		expectBuffsEq(pkts[1].content, Buffer.from('010101010101', 'hex'))
 	})
 
 	it('should process a message and a half', () => {

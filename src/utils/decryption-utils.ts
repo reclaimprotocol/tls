@@ -3,15 +3,16 @@ import { expand, extract } from 'futoin-hkdf'
 import { AUTH_TAG_BYTE_LENGTH, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { packWithLength } from './packets'
 import { TLSCrypto } from '../types'
+import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
 
 type DeriveTrafficKeysOptions = {
-	masterSecret: Buffer
+	masterSecret: Uint8Array
 	/** used to derive keys when resuming session */
-	earlySecret?: Buffer
+	earlySecret?: Uint8Array
 
 	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
 	/** list of handshake message to hash; or the hash itself */
-	hellos: Buffer[] | Buffer
+	hellos: Uint8Array[] | Uint8Array
 	/** type of secret; handshake or provider-data */
 	secretType: 'hs' | 'ap'
 }
@@ -30,7 +31,7 @@ export const NODEJS_TLS_CRYPTO: TLSCrypto = {
 		encryptr.setAutoPadding(false)
 		encryptr.setAAD(aead, { plaintextLength: data.length })
 
-		const ciphertext = Buffer.concat([
+		const ciphertext = concatenateUint8Arrays([
 			encryptr.update(data),
 			encryptr.final()
 		])
@@ -54,13 +55,13 @@ export const NODEJS_TLS_CRYPTO: TLSCrypto = {
 
 		decipher.setAAD(aead, { plaintextLength: data.length })
 
-		const plaintext = Buffer.concat([
+		const plaintext = concatenateUint8Arrays([
 			decipher.update(data),
 			// essentially, we skip validating the data
 			// if we don't have an auth tag
 			// this is insecure generally, and auth tag validation
 			// should happen at some point
-			authTag ? decipher.final() : Buffer.alloc(0),
+			authTag ? decipher.final() : new Uint8Array(),
 		])
 
 		return { plaintext }
@@ -70,11 +71,11 @@ export const NODEJS_TLS_CRYPTO: TLSCrypto = {
 export type SharedKeyData = ReturnType<typeof computeSharedKeys>
 
 export function computeUpdatedTrafficMasterSecret(
-	masterSecret: Buffer,
+	masterSecret: Uint8Array,
 	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
 ) {
 	const { hashAlgorithm, hashLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
-	return hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'traffic upd', Buffer.alloc(0), hashLength)
+	return hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'traffic upd', new Uint8Array(), hashLength)
 }
 
 export function computeSharedKeys({
@@ -87,17 +88,17 @@ export function computeSharedKeys({
 	const { hashAlgorithm, hashLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 
 	const emptyHash = createHash(hashAlgorithm).update('').digest()
-	const zeros = Buffer.alloc(hashLength)
-	let handshakeTrafficSecret: Buffer
+	const zeros = new Uint8Array(hashLength)
+	let handshakeTrafficSecret: Uint8Array
 	if(secretType === 'hs') {
 		// some hashes
-		earlySecret = earlySecret || extract(hashAlgorithm, hashLength, zeros, '')
+		earlySecret = earlySecret || extract(hashAlgorithm, hashLength, Buffer.from(zeros), '')
 		const derivedSecret = hkdfExtractAndExpandLabel(hashAlgorithm, earlySecret, 'derived', emptyHash, hashLength)
 
-		handshakeTrafficSecret = extract(hashAlgorithm, hashLength, masterKey, derivedSecret)
+		handshakeTrafficSecret = extract(hashAlgorithm, hashLength, Buffer.from(masterKey), derivedSecret)
 	} else {
 		const derivedSecret = hkdfExtractAndExpandLabel(hashAlgorithm, masterKey, 'derived', emptyHash, hashLength)
-		handshakeTrafficSecret = extract(hashAlgorithm, hashLength, zeros, derivedSecret)
+		handshakeTrafficSecret = extract(hashAlgorithm, hashLength, Buffer.from(zeros), derivedSecret)
 	}
 
 	return deriveTrafficKeys({
@@ -134,31 +135,32 @@ export function deriveTrafficKeys({
 	}
 }
 
-export function deriveTrafficKeysForSide(masterSecret: Buffer, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
+export function deriveTrafficKeysForSide(masterSecret: Uint8Array, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
 	const { hashAlgorithm, keyLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	const ivLen = 12
 
-	const encKey = hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'key', Buffer.alloc(0), keyLength)
-	const iv = hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'iv', Buffer.alloc(0), ivLen)
+	const encKey = hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'key', new Uint8Array(), keyLength)
+	const iv = hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'iv', new Uint8Array(0), ivLen)
 
 	return { masterSecret, encKey, iv }
 }
 
-export function hkdfExtractAndExpandLabel(algorithm: string, key: ArrayBufferLike, label: string, context: ArrayBufferLike, length: number) {
+export function hkdfExtractAndExpandLabel(algorithm: string, key: Uint8Array, label: string, context: Uint8Array, length: number) {
 	const tmpLabel = `tls13 ${label}`
-	const lengthBuffer = Buffer.alloc(2)
-	lengthBuffer.writeUInt16BE(length, 0)
-	const hkdfLabel = Buffer.concat([
+	const lengthBuffer = new Uint8Array(2)
+	const lengthBufferView = uint8ArrayToDataView(lengthBuffer)
+	lengthBufferView.setUint16(0, length)
+	const hkdfLabel = concatenateUint8Arrays([
 		lengthBuffer,
-		packWithLength(Buffer.from(tmpLabel)).slice(1),
-		packWithLength(Buffer.from(context)).slice(1)
+		packWithLength(strToUint8Array(tmpLabel)).slice(1),
+		packWithLength(context).slice(1)
 	])
 
-	return expand(algorithm, length, Buffer.from(key), length, hkdfLabel)
+	return expand(algorithm, length, Buffer.from(key), length, Buffer.from(hkdfLabel))
 }
 
-export function getHash(msgs: Buffer[] | Buffer, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
-	if(Array.isArray(msgs)) {
+export function getHash(msgs: Uint8Array[] | Uint8Array, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
+	if(Array.isArray(msgs) && !(msgs instanceof Uint8Array)) {
 		const { hashAlgorithm } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 		const hasher = createHash(hashAlgorithm)
 		for(const msg of msgs) {

@@ -4,19 +4,22 @@ import { loadX509FromDer } from '../utils/x509'
 import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
 import { expectReadWithLength } from './packets'
 import { ROOT_CAS } from './root-ca'
+import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
 
 type VerifySignatureOptions = {
-	signature: Buffer
+	signature: Uint8Array
 	algorithm: keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP
 	publicKey: CertificatePublicKey
 	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
 
-	hellos: Buffer[] | Buffer
+	hellos: Uint8Array[] | Uint8Array
 }
 
-export function parseCertificates(data: Buffer) {
+const CERT_VERIFY_TXT = strToUint8Array('TLS 1.3, server CertificateVerify')
+
+export function parseCertificates(data: Uint8Array) {
 	// context, kina irrelevant
-	const ctx = read(1)[0]
+	const ctx = read(1).at(0)!
 	// the data itself
 	data = readWLength(3)
 
@@ -50,19 +53,21 @@ export function parseCertificates(data: Buffer) {
 	}
 }
 
-export function parseServerCertificateVerify(data: Buffer) {
+export function parseServerCertificateVerify(data: Uint8Array) {
 	// data = readWLength(2)
 	const algorithmBytes = read(2)
 	const algorithm = SUPPORTED_SIGNATURE_ALGS.find(
 		alg => (
-			SUPPORTED_SIGNATURE_ALGS_MAP[alg]
-				.identifier
-				.equals(algorithmBytes)
+			areUint8ArraysEqual(
+				SUPPORTED_SIGNATURE_ALGS_MAP[alg]
+					.identifier,
+				algorithmBytes
+			)
 		)
 	)
 
 	if(!algorithm) {
-		throw new Error(`Unsupported signature algorithm '${algorithmBytes.toString('hex')}'`)
+		throw new Error(`Unsupported signature algorithm '${algorithmBytes}'`)
 	}
 
 	const signature = readWLength(2)
@@ -94,6 +99,10 @@ export async function verifyCertificateSignature({
 		verify
 	} = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm]
 	const data = getSignatureData()
+	if(typeof publicKey === 'string') {
+		throw new Error('Cannot verify signature with string public key')
+	}
+
 	const verified = await verify(data, signature, publicKey)
 
 	if(!verified) {
@@ -102,10 +111,10 @@ export async function verifyCertificateSignature({
 
 	function getSignatureData() {
 		const handshakeHash = getHash(hellos, cipherSuite)
-		const content = Buffer.concat([
-			Buffer.alloc(64, 0x20),
-			Buffer.from('TLS 1.3, server CertificateVerify'),
-			Buffer.alloc(1, 0x0),
+		const content = concatenateUint8Arrays([
+			new Uint8Array(64).fill(0x20),
+			CERT_VERIFY_TXT,
+			new Uint8Array([0]),
 			handshakeHash
 		])
 

@@ -14,17 +14,17 @@ export type TLSCrypto = {
 	encrypt(
 		cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP,
 		opts: TLSCryptoCryptOptions
-	): { ciphertext: Buffer, authTag: Buffer }
+	): { ciphertext: Uint8Array, authTag: Uint8Array }
 	decrypt(
 		cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP,
 		opts: TLSCryptoCryptOptions
-	): { plaintext: Buffer }
+	): { plaintext: Uint8Array }
 }
 
 export type TLSPacket = {
-	header: Buffer
-	content: Buffer
-	authTag?: Buffer
+	header: Uint8Array
+	content: Uint8Array
+	authTag?: Uint8Array
 }
 
 export type TLSConnectionOptions = {
@@ -66,10 +66,10 @@ export type TLSClientOptions = TLSConnectionOptions & {
 }
 
 export type TLSPresharedKey = {
-	identity: Buffer
+	identity: Uint8Array
 	ticketAge: number
-	finishKey: Buffer
-	earlySecret: Buffer
+	finishKey: Uint8Array
+	earlySecret: Uint8Array
 	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
 }
 
@@ -77,13 +77,13 @@ export type TLSSessionTicket = {
 	expiresAt: Date
 	lifetimeS: number
 	ticketAgeAddMs: number
-	nonce: Buffer
-	ticket: Buffer
-	extensions: Buffer
+	nonce: Uint8Array
+	ticket: Uint8Array
+	extensions: Uint8Array
 }
 
 export type TLSHandshakeOptions = {
-	random?: Buffer
+	random?: Uint8Array
 	psk?: TLSPresharedKey
 }
 
@@ -91,9 +91,9 @@ export type TLSEventMap = {
 	handshake: undefined
 	'recv-certificates': { certificates: X509Certificate[] }
 	data: {
-		plaintext: Buffer
-		ciphertext: Buffer
-		authTag: Buffer
+		plaintext: Uint8Array
+		ciphertext: Uint8Array
+		authTag: Uint8Array
 	}
 	end: { error?: Error }
 	'session-ticket': TLSSessionTicket
@@ -110,5 +110,5 @@ export interface TLSEventEmitter {
 export type ProcessPacket = (type: number, packet: TLSPacket) => void
 
 export type PacketProcessor = {
-	onData(data: Buffer, onChunk: ProcessPacket): void
+	onData(data: Uint8Array, onChunk: ProcessPacket): void
 }

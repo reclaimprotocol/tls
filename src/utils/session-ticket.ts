@@ -4,17 +4,18 @@ import { TLSSessionTicket } from '../types'
 import { getHash, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
 import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { expectReadWithLength } from './packets'
+import { uint8ArrayToDataView } from './generics'
 
 type GetResumableSessionTicketOptions = {
-	masterKey: Buffer
+	masterKey: Uint8Array
 	/** hello msgs without record header */
-	hellos: Buffer[] | Buffer
+	hellos: Uint8Array[] | Uint8Array
 	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
 }
 
-export function parseSessionTicket(data: Buffer) {
-	const lifetimeS = read(4).readUint32BE()
-	const ticketAgeAddMs = read(4).readUint32BE()
+export function parseSessionTicket(data: Uint8Array) {
+	const lifetimeS = read(4).getUint32(0)
+	const ticketAgeAddMs = read(4).getUint32(0)
 
 	const nonce = readWLength(1)
 	const ticket = readWLength(2)
@@ -35,7 +36,7 @@ export function parseSessionTicket(data: Buffer) {
 	function read(bytes: number) {
 		const result = data.slice(0, bytes)
 		data = data.slice(bytes)
-		return result
+		return uint8ArrayToDataView(result)
 	}
 
 	function readWLength(bytesLength = 2) {
@@ -65,8 +66,8 @@ export function getPskFromTicket(
 
 	const binderKey = hkdfExtractAndExpandLabel(hashAlgorithm, earlySecret, 'res binder', emptyHash, hashLength)
 
-	// const clientEarlyTrafficSecret = hkdfExtractAndExpandLabel(hashAlgorithm, earlySecret, 'c e traffic', Buffer.alloc(0), hashLength)
-	const finishKey = hkdfExtractAndExpandLabel(hashAlgorithm, binderKey, 'finished', Buffer.alloc(0), hashLength)
+	// const clientEarlyTrafficSecret = hkdfExtractAndExpandLabel(hashAlgorithm, earlySecret, 'c e traffic', new Uint8Array(), hashLength)
+	const finishKey = hkdfExtractAndExpandLabel(hashAlgorithm, binderKey, 'finished', new Uint8Array(), hashLength)
 
 	const ticketAge = Math.floor(ticket.lifetimeS / 1000 + ticket.ticketAgeAddMs)
 

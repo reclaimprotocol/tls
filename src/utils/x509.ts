@@ -2,7 +2,7 @@ import * as peculiar from '@peculiar/x509'
 // not using types/index to avoid circular dependency
 import type { X509Certificate } from '../types/x509'
 
-export function loadX509FromPem(pem: string | Buffer): X509Certificate<peculiar.X509Certificate> {
+export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<peculiar.X509Certificate> {
 	setCryptoIfRequired()
 	let cert: peculiar.X509Certificate
 	try {
@@ -20,7 +20,7 @@ export function loadX509FromPem(pem: string | Buffer): X509Certificate<peculiar.
 			return i === s
 		},
 		getPublicKey() {
-			return Buffer.from(cert.publicKey.rawData)
+			return new Uint8Array(cert.publicKey.rawData)
 		},
 		verifyIssued(otherCert) {
 			return otherCert.internal.verify({
@@ -33,13 +33,13 @@ export function loadX509FromPem(pem: string | Buffer): X509Certificate<peculiar.
 	}
 }
 
-export function loadX509FromDer(der: Buffer) {
-	const PEM_PREFIX = '-----BEGIN CERTIFICATE-----\n'
-	const PEM_POSTFIX = '-----END CERTIFICATE-----'
+export function loadX509FromDer(der: Uint8Array) {
+	// const PEM_PREFIX = '-----BEGIN CERTIFICATE-----\n'
+	// const PEM_POSTFIX = '-----END CERTIFICATE-----'
 
-	const splitText = der.toString('base64').match(/.{0,64}/g)!.join('\n')
-	const pem = `${PEM_PREFIX}${splitText}${PEM_POSTFIX}`
-	return loadX509FromPem(pem)
+	// const splitText = der.toString('base64').match(/.{0,64}/g)!.join('\n')
+	// const pem = `${PEM_PREFIX}${splitText}${PEM_POSTFIX}`
+	return loadX509FromPem(der)
 }
 
 export function getWebCrypto() {

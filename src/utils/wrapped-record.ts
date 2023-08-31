@@ -1,5 +1,5 @@
 import { TLSCrypto } from '../types'
-import { xor } from './generics'
+import { concatenateUint8Arrays, xor } from './generics'
 import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { NODEJS_TLS_CRYPTO } from './decryption-utils'
 
@@ -51,7 +51,7 @@ export function decryptWrappedRecord(
 }
 
 export function encryptWrappedRecord(
-	{ plaintext, contentType }: { plaintext: Buffer, contentType: keyof typeof CONTENT_TYPE_MAP },
+	{ plaintext, contentType }: { plaintext: Uint8Array, contentType: keyof typeof CONTENT_TYPE_MAP },
 	{
 		key,
 		iv,
@@ -62,9 +62,9 @@ export function encryptWrappedRecord(
 	}: WrappedRecordCipherOptions
 ) {
 	crypto ||= NODEJS_TLS_CRYPTO
-	const completePlaintext = Buffer.concat([
+	const completePlaintext = concatenateUint8Arrays([
 		plaintext,
-		Buffer.from([ CONTENT_TYPE_MAP[contentType] ])
+		new Uint8Array([ CONTENT_TYPE_MAP[contentType] ])
 	])
 	iv = recordNumber === undefined ? iv : generateIV(iv, recordNumber)
 	return crypto.encrypt(
@@ -78,7 +78,7 @@ export function encryptWrappedRecord(
 	)
 }
 
-export function parseWrappedRecord(data: Buffer) {
+export function parseWrappedRecord(data: Uint8Array) {
 	const encryptedData = data.slice(0, data.length - AUTH_TAG_BYTE_LENGTH)
 	const authTag = data.slice(data.length - AUTH_TAG_BYTE_LENGTH)
 
@@ -88,8 +88,8 @@ export function parseWrappedRecord(data: Buffer) {
 export function generateIV(iv: Uint8Array, recordNumber: number) {
 	// make the recordNumber a buffer, so we can XOR with the main IV
 	// to generate the specific IV to decrypt this packet
-	const recordBuffer = Buffer.alloc(iv.length)
-	recordBuffer.writeUInt32BE(recordNumber, iv.length - 4)
-
+	const recordBuffer = new Uint8Array(iv.length)
+	const recordBufferView = new DataView(recordBuffer.buffer)
+	recordBufferView.setUint32(iv.length - 4, recordNumber)
 	return xor(iv, recordBuffer)
 }

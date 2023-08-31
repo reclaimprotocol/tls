@@ -3,23 +3,24 @@ import { TLSPresharedKey } from '../types'
 import { getHash } from '../utils/decryption-utils'
 import { COMPRESSION_MODE, CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_KEY_TYPE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
 import { packWith3ByteLength, packWithLength } from './packets'
+import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
 
 type SupportedKeyType = keyof typeof SUPPORTED_KEY_TYPE_MAP
 
-type PublicKeyData = { type: SupportedKeyType, key: Buffer }
+type PublicKeyData = { type: SupportedKeyType, key: Uint8Array }
 
 type ClientHelloOptions = {
 	host: string
 	keysToShare: PublicKeyData[]
-	random?: Buffer
-	sessionId?: Buffer
+	random?: Uint8Array
+	sessionId?: Uint8Array
 	psk?: TLSPresharedKey
 	cipherSuites?: (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
 }
 
 type ExtensionData = {
 	type: keyof typeof SUPPORTED_EXTENSION_MAP
-	data: Buffer
+	data: Uint8Array
 	/** number of bytes to use for length */
 	lengthBytes?: number
 }
@@ -39,7 +40,7 @@ export function packClientHello({
 	const packedSessionId = packWithLength(sessionId).slice(1)
 	const cipherSuiteList = (cipherSuites || Object.keys(SUPPORTED_CIPHER_SUITE_MAP))
 		.map(cipherSuite => SUPPORTED_CIPHER_SUITE_MAP[cipherSuite].identifier)
-	const packedCipherSuites = packWithLength(Buffer.concat(cipherSuiteList))
+	const packedCipherSuites = packWithLength(concatenateUint8Arrays(cipherSuiteList))
 	const extensionsList = [
 		packServerNameExtension(host),
 		packSupportedGroupsExtension(),
@@ -54,9 +55,9 @@ export function packClientHello({
 		extensionsList.push(packPresharedKeyExtension(psk))
 	}
 
-	const packedExtensions = packWithLength(Buffer.concat(extensionsList))
+	const packedExtensions = packWithLength(concatenateUint8Arrays(extensionsList))
 
-	const handshakeData = Buffer.concat([
+	const handshakeData = concatenateUint8Arrays([
 		LEGACY_PROTOCOL_VERSION,
 		random,
 		packedSessionId,
@@ -65,8 +66,8 @@ export function packClientHello({
 		packedExtensions
 	])
 
-	const packedHandshake = Buffer.concat([
-		Buffer.from([ SUPPORTED_RECORD_TYPE_MAP.CLIENT_HELLO ]),
+	const packedHandshake = concatenateUint8Arrays([
+		new Uint8Array([ SUPPORTED_RECORD_TYPE_MAP.CLIENT_HELLO ]),
 		packWith3ByteLength(handshakeData)
 	])
 
@@ -83,12 +84,14 @@ export function packClientHello({
 	return packedHandshake
 }
 
-export function computeBinderSuffix(packedHandshakePrefix: Buffer, psk: TLSPresharedKey) {
+export function computeBinderSuffix(packedHandshakePrefix: Uint8Array, psk: TLSPresharedKey) {
 	const { hashAlgorithm } = SUPPORTED_CIPHER_SUITE_MAP[psk.cipherSuite]
 
 	const hashedHelloHandshake = getHash([ packedHandshakePrefix ], psk.cipherSuite)
 
-	const binder = createHmac(hashAlgorithm, psk.finishKey).update(hashedHelloHandshake).digest()
+	const binder = createHmac(hashAlgorithm, psk.finishKey)
+		.update(hashedHelloHandshake)
+		.digest()
 	return binder
 }
 
@@ -101,19 +104,21 @@ export function packPresharedKeyExtension({ identity, ticketAge, cipherSuite }: 
 	const binderLength = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite].hashLength
 
 	const packedIdentity = packWithLength(identity)
-	const packedTicketAge = Buffer.alloc(4)
-	packedTicketAge.writeUInt32BE(ticketAge)
+	const packedTicketAge = new Uint8Array(4)
+	const packedTicketAgeView = uint8ArrayToDataView(packedTicketAge)
+	packedTicketAgeView.setUint32(0, ticketAge)
 
-	const serialisedIdentity = Buffer.concat([
+	const serialisedIdentity = concatenateUint8Arrays([
 		packedIdentity,
 		packedTicketAge
 	])
 	const identityPacked = packWithLength(serialisedIdentity)
-	const binderHolderBytes = Buffer.alloc(binderLength + 2 + 1)
-	binderHolderBytes.writeUint16BE(binderLength + 1, 0)
-	binderHolderBytes.writeUint8(binderLength, 2)
+	const binderHolderBytes = new Uint8Array(binderLength + 2 + 1)
+	const binderHolderBytesView = uint8ArrayToDataView(binderHolderBytes)
+	binderHolderBytesView.setUint16(0, binderLength + 1)
+	binderHolderBytesView.setUint8(2, binderLength)
 
-	const total = Buffer.concat([
+	const total = concatenateUint8Arrays([
 		identityPacked,
 		// 2 bytes for binders
 		// 1 byte for each binder length
@@ -121,9 +126,10 @@ export function packPresharedKeyExtension({ identity, ticketAge, cipherSuite }: 
 	])
 	const totalPacked = packWithLength(total)
 
-	const ext = Buffer.alloc(2 + totalPacked.length)
-	ext.writeUint16BE(SUPPORTED_EXTENSION_MAP.PRE_SHARED_KEY, 0)
-	totalPacked.copy(ext, 2)
+	const ext = new Uint8Array(2 + totalPacked.length)
+	ext.set(totalPacked, 2)
+	const extView = uint8ArrayToDataView(ext)
+	extView.setUint16(0, SUPPORTED_EXTENSION_MAP.PRE_SHARED_KEY)
 
 	return ext
 }
@@ -131,7 +137,7 @@ export function packPresharedKeyExtension({ identity, ticketAge, cipherSuite }: 
 function packPresharedKeyModeExtension() {
 	return packExtension({
 		type: 'PRE_SHARED_KEY_MODE',
-		data: Buffer.from([ 0x00, 0x01 ]),
+		data: new Uint8Array([ 0x00, 0x01 ]),
 		lengthBytes: 1
 	})
 }
@@ -139,7 +145,7 @@ function packPresharedKeyModeExtension() {
 function packSessionTicketExtension() {
 	return packExtension({
 		type: 'SESSION_TICKET',
-		data: Buffer.from([])
+		data: new Uint8Array(),
 	})
 }
 
@@ -154,7 +160,7 @@ function packVersionsExtension() {
 function packSignatureAlgorithmsExtension() {
 	return packExtension({
 		type: 'SIGNATURE_ALGS',
-		data: Buffer.concat(
+		data: concatenateUint8Arrays(
 			Object.values(SUPPORTED_SIGNATURE_ALGS_MAP)
 				.map(v => v.identifier)
 		)
@@ -164,14 +170,14 @@ function packSignatureAlgorithmsExtension() {
 function packSupportedGroupsExtension() {
 	return packExtension({
 		type: 'SUPPORTED_GROUPS',
-		data: Buffer.concat(
+		data: concatenateUint8Arrays(
 			Object.values(SUPPORTED_KEY_TYPE_MAP)
 		)
 	})
 }
 
 function packKeyShareExtension(keys: PublicKeyData[]) {
-	const buffs: Buffer[] = []
+	const buffs: Uint8Array[] = []
 	for(const { key, type } of keys) {
 		buffs.push(
 			SUPPORTED_KEY_TYPE_MAP[type],
@@ -181,18 +187,18 @@ function packKeyShareExtension(keys: PublicKeyData[]) {
 
 	return packExtension({
 		type: 'KEY_SHARE',
-		data: Buffer.concat(buffs)
+		data: concatenateUint8Arrays(buffs)
 	})
 }
 
 function packServerNameExtension(host: string) {
 	return packExtension({
 		type: 'SERVER_NAME',
-		data: Buffer.concat([
+		data: concatenateUint8Arrays([
 			// specify that this is a server hostname
-			Buffer.from([ 0x0 ]),
+			new Uint8Array([ 0x0 ]),
 			// pack the remaining data prefixed with length
-			packWithLength(Buffer.from(host, 'ascii'))
+			packWithLength(strToUint8Array(host))
 		])
 	})
 }
@@ -205,10 +211,11 @@ function packExtension({ type, data, lengthBytes }: ExtensionData) {
 	}
 
 	// 2 bytes for type, 2 bytes for packed data length
-	const result = Buffer.alloc(2 + 2 + packed.length)
-	result.writeUint8(SUPPORTED_EXTENSION_MAP[type], 1)
-	result.writeUint16BE(packed.length, 2)
-	packed.copy(result, 4)
+	const result = new Uint8Array(2 + 2 + packed.length)
+	const resultView = uint8ArrayToDataView(result)
+	resultView.setUint8(1, SUPPORTED_EXTENSION_MAP[type])
+	resultView.setUint16(2, packed.length)
+	result.set(packed, 4)
 
 	return result
 }

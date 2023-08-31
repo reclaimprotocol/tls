@@ -2,38 +2,38 @@ import { Logger } from 'pino'
 import { ProcessPacket, TLSPacket } from '../types'
 import { CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, PACKET_TYPE } from './constants'
 import { parseWrappedRecord } from './wrapped-record'
+import { areUint8ArraysEqual, concatenateUint8Arrays, uint8ArrayToDataView } from './generics'
 
 type PacketType = keyof typeof PACKET_TYPE
 
 type PacketHeaderOptions = {
 	type: PacketType
-	protoVersion?: Buffer
+	protoVersion?: Uint8Array
 }
 
 export type PacketOptions = {
 	type: PacketType
-	protoVersion?: Buffer
-	data: Buffer
+	protoVersion?: Uint8Array
+	data: Uint8Array
 }
 
 export function packPacketHeader(
 	dataLength: number,
 	{ type, protoVersion }: PacketHeaderOptions
 ) {
-	const lengthBuffer = Buffer.alloc(2)
-	lengthBuffer.writeUInt16BE(dataLength)
+	const lengthBuffer = new Uint8Array(2)
+	const dataView = uint8ArrayToDataView(lengthBuffer)
+	dataView.setUint16(0, dataLength)
 
-	const buffer = Buffer.concat([
-		Buffer.from([ PACKET_TYPE[type] ]),
+	return concatenateUint8Arrays([
+		new Uint8Array([ PACKET_TYPE[type] ]),
 		protoVersion || LEGACY_PROTOCOL_VERSION,
 		lengthBuffer
 	])
-
-	return buffer
 }
 
 export function packPacket(opts: PacketOptions) {
-	return Buffer.concat([
+	return concatenateUint8Arrays([
 		packPacketHeader(opts.data.length, opts),
 		opts.data
 	])
@@ -43,17 +43,18 @@ export function packPacket(opts: PacketOptions) {
  * Packs data prefixed with the length of the data;
  * Length encoded UInt24 big endian
  */
-export function packWith3ByteLength(data: Buffer) {
-	return Buffer.concat([
-		Buffer.from([ 0x00 ]),
+export function packWith3ByteLength(data: Uint8Array) {
+	return concatenateUint8Arrays([
+		new Uint8Array([ 0x00 ]),
 		packWithLength(data)
 	])
 }
 
-export function readWithLength(data: Buffer, lengthBytes = 2) {
+export function readWithLength(data: Uint8Array, lengthBytes = 2) {
+	const dataView = uint8ArrayToDataView(data)
 	const length = lengthBytes === 1
-		? data.readUint8()
-		: data.readUInt16BE(lengthBytes === 3 ? 1 : 0)
+		? dataView.getUint8(0)
+		: dataView.getUint16(lengthBytes === 3 ? 1 : 0)
 	if(data.length < lengthBytes + length) {
 		return undefined
 	}
@@ -61,10 +62,10 @@ export function readWithLength(data: Buffer, lengthBytes = 2) {
 	return data.slice(lengthBytes, lengthBytes + length)
 }
 
-export function expectReadWithLength(data: Buffer, lengthBytes = 2) {
+export function expectReadWithLength(data: Uint8Array, lengthBytes = 2) {
 	const result = readWithLength(data, lengthBytes)
 	if(!result) {
-		throw new Error(`Expected packet to have at least ${length + lengthBytes} bytes, got ${data.length}`)
+		throw new Error(`Expected packet to have at least ${data.length + lengthBytes} bytes, got ${data.length}`)
 	}
 
 	return result
@@ -74,10 +75,11 @@ export function expectReadWithLength(data: Buffer, lengthBytes = 2) {
  * Packs data prefixed with the length of the data;
  * Length encoded UInt16 big endian
  */
-export function packWithLength(data: Buffer) {
-	const buffer = Buffer.alloc(2 + data.length)
-	buffer.writeUint16BE(data.length, 0)
-	data.copy(buffer, 2)
+export function packWithLength(data: Uint8Array) {
+	const buffer = new Uint8Array(2 + data.length)
+	const dataView = uint8ArrayToDataView(buffer)
+	dataView.setUint16(0, data.length)
+	buffer.set(data, 2)
 
 	return buffer
 }
@@ -92,8 +94,8 @@ const SUPPORTED_PROTO_VERSIONS = [
  */
 export function makeMessageProcessor(logger: Logger) {
 	let currentMessageType: number | undefined = undefined
-	let currentMessageHeader: Buffer | undefined = undefined
-	let buffer = Buffer.alloc(0)
+	let currentMessageHeader: Uint8Array | undefined = undefined
+	let buffer = new Uint8Array(0)
 	let bytesLeft = 0
 
 	return {
@@ -107,8 +109,8 @@ export function makeMessageProcessor(logger: Logger) {
 		 * or a single packet
 		 * @param onChunk handle a complete packet
 		 */
-		onData(packet: Buffer, onChunk: ProcessPacket) {
-			buffer = Buffer.concat([ buffer, packet ])
+		onData(packet: Uint8Array, onChunk: ProcessPacket) {
+			buffer = concatenateUint8Arrays([ buffer, packet ])
 			while(buffer.length) {
 				// if we already aren't processing a packet
 				// this is the first byte
@@ -127,15 +129,16 @@ export function makeMessageProcessor(logger: Logger) {
 
 					// get the number of bytes we need to process
 					// to complete the packet
-					bytesLeft = buffer.readUInt16BE(3)
+					const buffDataView = uint8ArrayToDataView(buffer)
+					bytesLeft = buffDataView.getUint16(3)
 					currentMessageHeader = buffer.slice(0, 5)
 
 					const protoVersion = currentMessageHeader.slice(1, 3)
 					const isSupportedVersion = SUPPORTED_PROTO_VERSIONS
-						.some((v) => v.equals(protoVersion))
+						.some((v) => areUint8ArraysEqual(v, protoVersion))
 
 					if(!isSupportedVersion) {
-						throw new Error(`Unsupported protocol version (${protoVersion.toString('hex')})`)
+						throw new Error(`Unsupported protocol version (${protoVersion})`)
 					}
 
 					// remove the packet header
@@ -178,7 +181,7 @@ export function makeMessageProcessor(logger: Logger) {
 		reset() {
 			currentMessageType = undefined
 			currentMessageHeader = undefined
-			buffer = Buffer.alloc(0)
+			buffer = new Uint8Array(0)
 			bytesLeft = 0
 		}
 	}
