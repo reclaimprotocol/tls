@@ -7,7 +7,7 @@ export const CURRENT_PROTOCOL_VERSION = new Uint8Array([ 0x03, 0x04 ])
 // no compression, as TLS 1.3 does not support it
 export const COMPRESSION_MODE = new Uint8Array([ 0x01, 0x00 ])
 
-export const SUPPORTED_KEY_TYPE_MAP = {
+export const SUPPORTED_NAMED_CURVE_MAP = {
 	SECP384R1: {
 		identifier: new Uint8Array([ 0x00, 0x18 ]),
 		algorithm: 'P-384'
@@ -40,7 +40,7 @@ export const CONTENT_TYPE_MAP = {
 // The length of AEAD auth tag, appended after encrypted data in wrapped records
 export const AUTH_TAG_BYTE_LENGTH = 16
 
-export const SUPPORTED_KEY_TYPES = Object.keys(SUPPORTED_KEY_TYPE_MAP) as (keyof typeof SUPPORTED_KEY_TYPE_MAP)[]
+export const SUPPORTED_NAMED_CURVES = Object.keys(SUPPORTED_NAMED_CURVE_MAP) as (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
 
 export const SUPPORTED_CIPHER_SUITE_MAP = {
 	TLS_CHACHA20_POLY1305_SHA256:{

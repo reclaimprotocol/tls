@@ -1,13 +1,13 @@
 import { crypto } from '../crypto'
 import { Key, TLSPresharedKey } from '../types'
 import { getHash } from '../utils/decryption-utils'
-import { COMPRESSION_MODE, CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_KEY_TYPE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
+import { COMPRESSION_MODE, CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
 import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
 import { packWith3ByteLength, packWithLength } from './packets'
 
-type SupportedKeyType = keyof typeof SUPPORTED_KEY_TYPE_MAP
+type SupportedNamedCurve = keyof typeof SUPPORTED_NAMED_CURVE_MAP
 
-type PublicKeyData = { type: SupportedKeyType, key: Key }
+type PublicKeyData = { type: SupportedNamedCurve, key: Key }
 
 type ClientHelloOptions = {
 	host: string
@@ -43,7 +43,9 @@ export async function packClientHello({
 	const packedCipherSuites = packWithLength(concatenateUint8Arrays(cipherSuiteList))
 	const extensionsList = [
 		packServerNameExtension(host),
-		packSupportedGroupsExtension(),
+		packSupportedGroupsExtension(
+			keysToShare.map(k => k.type)
+		),
 		packSessionTicketExtension(),
 		packVersionsExtension(),
 		packSignatureAlgorithmsExtension(),
@@ -162,12 +164,12 @@ function packSignatureAlgorithmsExtension() {
 	})
 }
 
-function packSupportedGroupsExtension() {
+function packSupportedGroupsExtension(namedCurves: SupportedNamedCurve[]) {
 	return packExtension({
 		type: 'SUPPORTED_GROUPS',
 		data: concatenateUint8Arrays(
-			Object.values(SUPPORTED_KEY_TYPE_MAP)
-				.map(v => v.identifier)
+			namedCurves
+				.map(n => SUPPORTED_NAMED_CURVE_MAP[n].identifier)
 		)
 	})
 }
@@ -177,7 +179,7 @@ async function packKeyShareExtension(keys: PublicKeyData[]) {
 	for(const { key, type } of keys) {
 		const exportedKey = await crypto.exportKey(key)
 		buffs.push(
-			SUPPORTED_KEY_TYPE_MAP[type].identifier,
+			SUPPORTED_NAMED_CURVE_MAP[type].identifier,
 			packWithLength(exportedKey)
 		)
 	}

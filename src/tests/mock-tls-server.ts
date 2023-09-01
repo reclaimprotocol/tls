@@ -2,13 +2,17 @@ import { readFileSync } from 'fs'
 import { createServer, TlsOptions } from 'tls'
 
 // TLS echo server
-export function createMockTLSServer(port: number) {
+export function createMockTLSServer(
+	port: number,
+	tlsOpts: Partial<TlsOptions> = {}
+) {
 	const tlsSessionStore: Record<string, Buffer> = {}
 
 	const options: TlsOptions = {
 		key: readFileSync('./cert/private-key.pem'),
 		cert: readFileSync('./cert/public-cert.pem'),
-		minVersion: 'TLSv1.3'
+		minVersion: 'TLSv1.3',
+		...tlsOpts
 	}
 
 	const server = createServer(options, socket => {

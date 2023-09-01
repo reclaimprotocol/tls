@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
 import { packClientHello } from './utils/client-hello'
-import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_KEY_TYPE_MAP, SUPPORTED_KEY_TYPES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
+import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
 import { computeSharedKeys, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
 import { packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
 import { concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
@@ -31,16 +31,18 @@ export function makeTLSClient({
 	rootCAs,
 	logger: _logger,
 	cipherSuites,
+	namedCurves,
 	write
 }: TLSClientOptions) {
 	verifyServerCertificate = verifyServerCertificate !== false
+	namedCurves = namedCurves || SUPPORTED_NAMED_CURVES
 
 	const logger = _logger || LOGGER?.child({ })
 	const ev = new EventEmitter() as TLSEventEmitter
 	const processor = makeMessageProcessor(logger)
 	const { enqueue: enqueueServerPacket } = makeQueue()
 
-	const keyPairs: { [C in keyof typeof SUPPORTED_KEY_TYPE_MAP]?: KeyPair } = {}
+	const keyPairs: { [C in keyof typeof SUPPORTED_NAMED_CURVE_MAP]?: KeyPair } = {}
 	let handshakeDone = false
 	let ended = false
 	let sessionId = new Uint8Array()
@@ -50,7 +52,7 @@ export function makeTLSClient({
 	let keys: SharedKeyData | undefined = undefined
 	let recordSendCount = 0
 	let recordRecvCount = 0
-	let keyType: keyof typeof SUPPORTED_KEY_TYPE_MAP | undefined = undefined
+	let keyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP | undefined = undefined
 
 	let certificates: X509Certificate[] = []
 	let handshakePacketStream = new Uint8Array()
@@ -434,8 +436,8 @@ export function makeTLSClient({
 		ev.emit('end', { error })
 	}
 
-	async function getKeyPair(keyType: keyof typeof SUPPORTED_KEY_TYPE_MAP) {
-		const algorithm = SUPPORTED_KEY_TYPE_MAP[keyType].algorithm
+	async function getKeyPair(keyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP) {
+		const algorithm = SUPPORTED_NAMED_CURVE_MAP[keyType].algorithm
 		if(!keyPairs[keyType]) {
 			keyPairs[keyType] = await crypto.generateKeyPair(algorithm)
 		}
@@ -495,7 +497,7 @@ export function makeTLSClient({
 			const clientHello = await packClientHello({
 				host,
 				keysToShare: await Promise.all(
-					SUPPORTED_KEY_TYPES
+					namedCurves!
 						.map(async(keyType) => {
 							const { keyPair } = await getKeyPair(keyType)
 							return {

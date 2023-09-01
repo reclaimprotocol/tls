@@ -1,5 +1,5 @@
 import { crypto } from '../crypto'
-import { CURRENT_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_CIPHER_SUITES, SUPPORTED_EXTENSION_MAP, SUPPORTED_EXTENSIONS, SUPPORTED_KEY_TYPE_MAP, SUPPORTED_KEY_TYPES } from './constants'
+import { CURRENT_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_CIPHER_SUITES, SUPPORTED_EXTENSION_MAP, SUPPORTED_EXTENSIONS, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES } from './constants'
 import { areUint8ArraysEqual, uint8ArrayToDataView } from './generics'
 import { expectReadWithLength } from './packets'
 
@@ -23,7 +23,7 @@ export async function parseServerHello(data: Uint8Array) {
 
 	const extensionsLength = uint8ArrayToDataView(read(2)).getUint16(0)
 	let publicKey: Uint8Array | undefined
-	let publicKeyType: keyof typeof SUPPORTED_KEY_TYPE_MAP | undefined
+	let publicKeyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP | undefined
 	let supportsPsk = false
 
 	if(extensionsLength) {
@@ -38,8 +38,8 @@ export async function parseServerHello(data: Uint8Array) {
 				break
 			case 'KEY_SHARE':
 				const typeBytes = extData.slice(0, 2)
-				publicKeyType = SUPPORTED_KEY_TYPES
-					.find(k => areUint8ArraysEqual(SUPPORTED_KEY_TYPE_MAP[k].identifier, typeBytes))
+				publicKeyType = SUPPORTED_NAMED_CURVES
+					.find(k => areUint8ArraysEqual(SUPPORTED_NAMED_CURVE_MAP[k].identifier, typeBytes))
 				if(!publicKeyType) {
 					throw new Error(`Unsupported key type '${typeBytes}'`)
 				}
@@ -64,7 +64,7 @@ export async function parseServerHello(data: Uint8Array) {
 		sessionId,
 		cipherSuite,
 		publicKey: await crypto.importKey(
-			SUPPORTED_KEY_TYPE_MAP[publicKeyType].algorithm,
+			SUPPORTED_NAMED_CURVE_MAP[publicKeyType].algorithm,
 			publicKey,
 			'public'
 		),

@@ -1,5 +1,5 @@
 import type { Logger } from 'pino'
-import type { SUPPORTED_CIPHER_SUITE_MAP } from '../utils/constants'
+import type { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP } from '../utils/constants'
 import { Key } from './crypto'
 import type { X509Certificate } from './x509'
 
@@ -27,6 +27,8 @@ export type TLSConnectionOptions = {
 	rootCAs?: X509Certificate[]
 	/** the cipher suites the client will claim it supports */
 	cipherSuites?: (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
+	/** the named curves the client will claim it supports */
+	namedCurves?: (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
 }
 
 export type TLSClientOptions = TLSConnectionOptions & {
