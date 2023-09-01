@@ -19,7 +19,7 @@ export function bufferFromHexStringWithWhitespace(txt: string) {
 export function xor(a: Uint8Array, b: Uint8Array) {
 	const result = new Uint8Array(a.length)
 	for(let i = 0; i < a.length; i++) {
-		result[i] = a[i] ^ b[i]
+		result[i] = a.at(i)! ^ b.at(i)!
 	}
 
 	return result

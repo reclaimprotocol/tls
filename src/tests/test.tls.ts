@@ -5,6 +5,7 @@ import { TLSPresharedKey, TLSSessionTicket } from '../types'
 import { createMockTLSServer } from './mock-tls-server'
 import { delay } from './utils'
 import { strToUint8Array } from '../utils/generics'
+import { crypto } from '../crypto'
 
 const chance = new Chance()
 
@@ -125,6 +126,7 @@ describe('TLS Tests', () => {
 		}
 
 		const oldKey = tls.getKeys()?.clientEncKey
+		expect(oldKey).toBeDefined()
 		await tls.updateTrafficKeys(true)
 
 		const data = strToUint8Array('hello world')
@@ -139,7 +141,11 @@ describe('TLS Tests', () => {
 		expect(recvData).toEqual(data)
 
 		const newKey = tls.getKeys()?.clientEncKey
-		expect(newKey).not.toEqual(oldKey)
+		expect(
+			await crypto.exportKey(newKey!)
+		).not.toEqual(
+			await crypto.exportKey(oldKey!)
+		)
 
 		socket.end()
 	})
