@@ -63,9 +63,10 @@ export async function parseServerHello(data: Uint8Array) {
 		serverRandom,
 		sessionId,
 		cipherSuite,
-		publicKey: await crypto.importPublicKey(
+		publicKey: await crypto.importKey(
 			SUPPORTED_KEY_TYPE_MAP[publicKeyType].algorithm,
-			publicKey
+			publicKey,
+			'public'
 		),
 		publicKeyType,
 		supportsPsk

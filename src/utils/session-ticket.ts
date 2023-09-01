@@ -72,7 +72,7 @@ export async function getPskFromTicket(
 	return {
 		identity: ticket.ticket,
 		ticketAge,
-		finishKey,
+		finishKey: await crypto.importKey(hashAlgorithm, finishKey),
 		resumeMasterSecret,
 		earlySecret,
 		cipherSuite,

@@ -10,7 +10,7 @@ import { bufferFromHexStringWithWhitespace, toHexStringWithWhitespace } from '..
 import { expectBuffsEq } from './utils'
 import { crypto } from '../crypto'
 
-const curve = 'ED25519'
+const curve = 'X25519'
 
 describe('Crypto Tests', () => {
 
@@ -18,13 +18,15 @@ describe('Crypto Tests', () => {
 	it('should correctly compute handshake keys', async() => {
 		const masterKey = await crypto.calculateSharedSecret(
 			curve,
-			await crypto.importPrivateKey(
+			await crypto.importKey(
 				curve,
 				Buffer.from('202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f', 'hex'),
+				'private'
 			),
-			await crypto.importPublicKey(
+			await crypto.importKey(
 				curve,
 				Buffer.from('9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615', 'hex'),
+				'public'
 			),
 		)
 
@@ -60,13 +62,15 @@ describe('Crypto Tests', () => {
 	it('should correctly compute provider keys', async() => {
 		const masterKey = await crypto.calculateSharedSecret(
 			curve,
-			await crypto.importPrivateKey(
+			await crypto.importKey(
 				curve,
 				Buffer.from('202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f', 'hex'),
+				'private'
 			),
-			await crypto.importPublicKey(
+			await crypto.importKey(
 				curve,
 				Buffer.from('9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615', 'hex'),
+				'public'
 			)
 		)
 
@@ -212,15 +216,17 @@ describe('Crypto Tests', () => {
 
 		const sharedkey = await crypto.calculateSharedSecret(
 			curve,
-			await crypto.importPrivateKey(
+			await crypto.importKey(
 				curve,
 				bufferFromHexStringWithWhitespace(`de 5b 44 76 e7 b4 90 b2 65 2d 33 8a cb
-					f2 94 80 66 f2 55 f9 44 0e 23 b9 8f c6 98 35 29 8d c1 07`)
+					f2 94 80 66 f2 55 f9 44 0e 23 b9 8f c6 98 35 29 8d c1 07`),
+				'private'
 			),
-			await crypto.importPublicKey(
+			await crypto.importKey(
 				curve,
 				bufferFromHexStringWithWhitespace(`e4 ff b6 8a c0 5f 8d 96 c9 9d a2 66 98 34
-					6c 6b e1 64 82 ba dd da fe 05 1a 66 b4 f1 8d 66 8f 0b`)
+					6c 6b e1 64 82 ba dd da fe 05 1a 66 b4 f1 8d 66 8f 0b`),
+				'public'
 			)
 		)
 

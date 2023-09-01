@@ -4,10 +4,9 @@ export type Key = CryptoKey
 export type SymmetricCryptoAlgorithm = 'AES-256-GCM'
 	| 'AES-128-GCM'
 	| 'CHACHA20-POLY1305'
-export type CurveAlgorithm = 'RSA-PSS-RSAE-SHA256'
-	| 'ED25519'
-	| 'RSA-PKCS1-SHA512'
-	| 'ECDSA-SECP256R1-SHA256'
+export type AsymmetricCryptoAlgorithm = 'RSA'
+	| 'X25519'
+	| 'P-256'
 
 export type HashAlgorithm = 'SHA-256' | 'SHA-384'
 type CryptoAlgorithm = SymmetricCryptoAlgorithm
@@ -39,14 +38,13 @@ export type CurveImplementation = {
 }
 
 export type Crypto = {
-	importKey(raw: Uint8Array, alg: CryptoAlgorithm): Awaitable<Key>
+	importKey(alg: CryptoAlgorithm, raw: Uint8Array): Awaitable<Key>
+	importKey(alg: HashAlgorithm, raw: Uint8Array): Awaitable<Key>
+	importKey(alg: AsymmetricCryptoAlgorithm, raw: Uint8Array, type: 'private' | 'public'): Awaitable<Key>
 	exportKey(key: Key): Awaitable<Uint8Array>
 
-	generateKeyPair(alg: CurveAlgorithm): Awaitable<KeyPair>
-	calculateSharedSecret(alg: CurveAlgorithm, privateKey: Key, publicKey: Key): Awaitable<Uint8Array>
-	exportPublicKey(key: Key): Awaitable<Uint8Array>
-	importPrivateKey(alg: CurveAlgorithm, raw: Uint8Array): Awaitable<Key>
-	importPublicKey(alg: CurveAlgorithm, raw: Uint8Array): Awaitable<Key>
+	generateKeyPair(alg: AsymmetricCryptoAlgorithm): Awaitable<KeyPair>
+	calculateSharedSecret(alg: AsymmetricCryptoAlgorithm, privateKey: Key, publicKey: Key): Awaitable<Uint8Array>
 
 	randomBytes(length: number): Uint8Array
 	authenticatedEncrypt(
@@ -58,12 +56,12 @@ export type Crypto = {
 		opts: AuthenticatedCryptOptions
 	): Awaitable<{ plaintext: Uint8Array }>
 	verify(
-		alg: CurveAlgorithm,
+		alg: AsymmetricCryptoAlgorithm,
 		opts: VerifyOptions
 	): Awaitable<boolean>
 
 	hash(alg: HashAlgorithm, data: Uint8Array): Awaitable<Uint8Array>
-	hmac(alg: HashAlgorithm, key: Uint8Array, data: Uint8Array): Awaitable<Uint8Array>
+	hmac(alg: HashAlgorithm, key: Key, data: Uint8Array): Awaitable<Uint8Array>
 	extract(alg: HashAlgorithm, hashLength: number, ikm: Uint8Array, salt: Uint8Array | string): Awaitable<Uint8Array>
-	expand(alg: HashAlgorithm, hashLength: number, key: Uint8Array, expLength: number, label: Uint8Array): Awaitable<Uint8Array>
+	expand(alg: HashAlgorithm, hashLength: number, key: Key, expLength: number, info: Uint8Array): Awaitable<Uint8Array>
 }

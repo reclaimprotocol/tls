@@ -175,7 +175,7 @@ function packSupportedGroupsExtension() {
 async function packKeyShareExtension(keys: PublicKeyData[]) {
 	const buffs: Uint8Array[] = []
 	for(const { key, type } of keys) {
-		const exportedKey = await crypto.exportPublicKey(key)
+		const exportedKey = await crypto.exportKey(key)
 		buffs.push(
 			SUPPORTED_KEY_TYPE_MAP[type].identifier,
 			packWithLength(exportedKey)

@@ -36,5 +36,6 @@ async function computeFinishMessageHash({
 	const { hashAlgorithm, hashLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	const handshakeHash = await getHash(handshakeMessages, cipherSuite)
 	const finishKey = await hkdfExtractAndExpandLabel(hashAlgorithm, secret, 'finished', new Uint8Array(0), hashLength)
-	return crypto.hmac(hashAlgorithm, finishKey, handshakeHash)
+	const hmacKey = await crypto.importKey(hashAlgorithm, finishKey)
+	return crypto.hmac(hashAlgorithm, hmacKey, handshakeHash)
 }

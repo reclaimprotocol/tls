@@ -11,11 +11,11 @@ export const COMPRESSION_MODE = new Uint8Array([ 0x01, 0x00 ])
 export const SUPPORTED_KEY_TYPE_MAP = {
 	SECP384R1: {
 		identifier: new Uint8Array([ 0x00, 0x18 ]),
-		algorithm: 'ECDSA-SECP256R1-SHA256'
+		algorithm: 'P-256'
 	} as const,
 	X25519: {
 		identifier: new Uint8Array([ 0x00, 0x1d ]),
-		algorithm: 'ED25519'
+		algorithm: 'X25519'
 	} as const
 }
 

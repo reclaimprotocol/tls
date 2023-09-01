@@ -1,6 +1,6 @@
 import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { packWithLength } from './packets'
-import { HashAlgorithm } from '../types'
+import { HashAlgorithm, Key } from '../types'
 import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
 import { crypto } from '../crypto'
 
@@ -86,18 +86,17 @@ export async function deriveTrafficKeys({
 export async function deriveTrafficKeysForSide(masterSecret: Uint8Array, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
 	const { hashAlgorithm, keyLength, cipher } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	const ivLen = 12
-
 	const encKey = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'key', new Uint8Array(), keyLength)
 	const iv = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'iv', new Uint8Array(0), ivLen)
 
 	return {
 		masterSecret,
-		encKey: await crypto.importKey(encKey, cipher),
+		encKey: await crypto.importKey(cipher, encKey),
 		iv
 	}
 }
 
-export function hkdfExtractAndExpandLabel(algorithm: HashAlgorithm, key: Uint8Array, label: string, context: Uint8Array, length: number) {
+export async function hkdfExtractAndExpandLabel(algorithm: HashAlgorithm, secret: Uint8Array, label: string, context: Uint8Array, length: number) {
 	const tmpLabel = `tls13 ${label}`
 	const lengthBuffer = new Uint8Array(2)
 	const lengthBufferView = uint8ArrayToDataView(lengthBuffer)
@@ -108,7 +107,8 @@ export function hkdfExtractAndExpandLabel(algorithm: HashAlgorithm, key: Uint8Ar
 		packWithLength(context).slice(1)
 	])
 
-	return crypto.expand(algorithm, length, Buffer.from(key), length, hkdfLabel)
+	const key = await crypto.importKey(algorithm, secret) 
+	return crypto.expand(algorithm, length, key, length, hkdfLabel)
 }
 
 export async function getHash(msgs: Uint8Array[] | Uint8Array, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {

@@ -1,6 +1,7 @@
 import type { Logger } from 'pino'
 import type { SUPPORTED_CIPHER_SUITE_MAP } from '../utils/constants'
 import type { X509Certificate } from './x509'
+import { Key } from './crypto'
 
 export type TLSPacket = {
 	header: Uint8Array
@@ -45,7 +46,7 @@ export type TLSClientOptions = TLSConnectionOptions & {
 export type TLSPresharedKey = {
 	identity: Uint8Array
 	ticketAge: number
-	finishKey: Uint8Array
+	finishKey: Key
 	earlySecret: Uint8Array
 	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
 }
