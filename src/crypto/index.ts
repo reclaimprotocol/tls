@@ -4,8 +4,12 @@ import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics'
 
 const subtle = webcrypto.subtle
 
-const X25519_PRIVATE_KEY_DER_PREFIX = Buffer.from([
+const X25519_PRIVATE_KEY_DER_PREFIX = new Uint8Array([
 	48, 46, 2, 1, 0, 48, 5, 6, 3, 43, 101, 110, 4, 34, 4, 32
+])
+
+const P384_PRIVATE_KEY_DER_PREFIX = new Uint8Array([
+	0x30, 0x81, 0xb6, 0x02, 0x01, 0x00, 0x30, 0x10, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22, 0x04, 0x81, 0x9e, 0x30, 0x81, 0x9b, 0x02, 0x01, 0x01, 0x04, 0x30
 ])
 
 const SHARED_KEY_LEN_MAP: { [T in AsymmetricCryptoAlgorithm]: number } = {
@@ -48,8 +52,8 @@ export const crypto = {
 			if(args[0] === 'private') {
 				keyUsages = ['deriveBits']
 				keyType = 'pkcs8'
-				raw = Buffer.concat([
-					Buffer.from([0x04]),
+				raw = concatenateUint8Arrays([
+					P384_PRIVATE_KEY_DER_PREFIX,
 					raw
 				])
 			}
@@ -61,7 +65,7 @@ export const crypto = {
 			if(args[0] === 'private') {
 				keyUsages = ['deriveBits']
 				keyType = 'pkcs8'
-				raw = Buffer.concat([
+				raw = concatenateUint8Arrays([
 					X25519_PRIVATE_KEY_DER_PREFIX,
 					raw
 				])
@@ -101,13 +105,16 @@ export const crypto = {
 			key.type === 'private'
 			&& (
 				key.algorithm.name === 'X25519'
-				|| key.algorithm.name === 'P-256'
+				|| key.algorithm.name === 'ECDH'
 			)
 		) {
 			const form = toUint8Array(
 				await subtle.exportKey('pkcs8', key)
 			)
-			return form.slice(X25519_PRIVATE_KEY_DER_PREFIX.length)
+			const algPrefix = key.algorithm.name === 'X25519'
+				? X25519_PRIVATE_KEY_DER_PREFIX
+				: P384_PRIVATE_KEY_DER_PREFIX
+			return form.slice(algPrefix.length)
 		}
 
 		return toUint8Array(

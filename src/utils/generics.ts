@@ -8,14 +8,6 @@ export function toHexStringWithWhitespace(buff: Uint8Array, whitespace = ' ') {
 		.join(whitespace)
 }
 
-/**
- * converts a space separated hex string to a buffer
- * @param txt eg. '01 02 03 04'
- */
-export function bufferFromHexStringWithWhitespace(txt: string) {
-	return Buffer.from(txt.replace(/\s/g, ''), 'hex')
-}
-
 export function xor(a: Uint8Array, b: Uint8Array) {
 	const result = new Uint8Array(a.length)
 	for(let i = 0; i < a.length; i++) {

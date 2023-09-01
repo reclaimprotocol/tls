@@ -44,10 +44,10 @@ export async function computeSharedKeys({
 			|| await crypto.extract(hashAlgorithm, hashLength, zeros, '')
 		const derivedSecret = await hkdfExtractAndExpandLabel(hashAlgorithm, earlySecret, 'derived', emptyHash, hashLength)
 
-		handshakeTrafficSecret = await crypto.extract(hashAlgorithm, hashLength, Buffer.from(masterKey), derivedSecret)
+		handshakeTrafficSecret = await crypto.extract(hashAlgorithm, hashLength, masterKey, derivedSecret)
 	} else {
 		const derivedSecret = await hkdfExtractAndExpandLabel(hashAlgorithm, masterKey, 'derived', emptyHash, hashLength)
-		handshakeTrafficSecret = await crypto.extract(hashAlgorithm, hashLength, Buffer.from(zeros), derivedSecret)
+		handshakeTrafficSecret = await crypto.extract(hashAlgorithm, hashLength, zeros, derivedSecret)
 	}
 
 	return deriveTrafficKeys({
