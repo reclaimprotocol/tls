@@ -9,8 +9,14 @@ export const CURRENT_PROTOCOL_VERSION = new Uint8Array([ 0x03, 0x04 ])
 export const COMPRESSION_MODE = new Uint8Array([ 0x01, 0x00 ])
 
 export const SUPPORTED_KEY_TYPE_MAP = {
-	SECP384R1: new Uint8Array([ 0x00, 0x18 ]),
-	X25519: new Uint8Array([ 0x00, 0x1d ]),
+	SECP384R1: {
+		identifier: new Uint8Array([ 0x00, 0x18 ]),
+		algorithm: 'ECDSA-SECP256R1-SHA256'
+	} as const,
+	X25519: {
+		identifier: new Uint8Array([ 0x00, 0x1d ]),
+		algorithm: 'ED25519'
+	} as const
 }
 
 export const SUPPORTED_RECORD_TYPE_MAP = {
@@ -42,22 +48,22 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 		identifier: new Uint8Array([0x13, 0x03]),
 		keyLength: 32,
 		hashLength: 32,
-		hashAlgorithm: 'sha256',
-		cipher: 'chacha20-poly1305'
+		hashAlgorithm: 'SHA-256',
+		cipher: 'CHACHA20-POLY1305'
 	},
 	TLS_AES_256_GCM_SHA384: {
 		identifier: new Uint8Array([ 0x13, 0x02 ]),
 		keyLength: 32,
 		hashLength: 48,
-		hashAlgorithm: 'sha384',
-		cipher: 'aes-256-gcm',
+		hashAlgorithm: 'SHA-384',
+		cipher: 'AES-256-GCM',
 	},
 	TLS_AES_128_GCM_SHA256: {
 		identifier: new Uint8Array([ 0x13, 0x01 ]),
 		keyLength: 16,
 		hashLength: 32,
-		hashAlgorithm: 'sha256',
-		cipher: 'aes-128-gcm',
+		hashAlgorithm: 'SHA-256',
+		cipher: 'AES-128-GCM',
 	},
 } as const
 

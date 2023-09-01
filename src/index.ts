@@ -1,9 +1,7 @@
-import { randomBytes } from 'crypto'
 import EventEmitter from 'events'
 import { KeyPair, ProcessPacket, TLSClientOptions, TLSEventEmitter, TLSHandshakeOptions, TLSSessionTicket, X509Certificate } from './types'
 import { computeSharedKeys, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
 import { concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
-import { CURVES } from './utils/curve'
 import LOGGER from './utils/logger'
 import { makeQueue } from './utils/make-queue'
 import { packClientHello } from './utils/client-hello'
@@ -16,6 +14,7 @@ import { parseCertificates, parseServerCertificateVerify, verifyCertificateChain
 import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
+import { crypto } from './crypto'
 
 const RECORD_LENGTH_BYTES = 3
 
@@ -26,15 +25,12 @@ type Record = {
 	ciphertext: Uint8Array | undefined
 }
 
-type CurveType = keyof typeof CURVES
-
 export function makeTLSClient({
 	host,
 	verifyServerCertificate,
 	rootCAs,
 	logger: _logger,
 	cipherSuites,
-	crypto,
 	write
 }: TLSClientOptions) {
 	verifyServerCertificate = verifyServerCertificate !== false
@@ -44,14 +40,9 @@ export function makeTLSClient({
 	const processor = makeMessageProcessor(logger)
 	const { enqueue: enqueueServerPacket } = makeQueue()
 
+	const keyPairs: { [C in keyof typeof SUPPORTED_KEY_TYPE_MAP]?: KeyPair } = {}
 	let handshakeDone = false
 	let ended = false
-	const keyPairs = SUPPORTED_KEY_TYPES
-		.reduce((acc, curve) => {
-			acc[curve] = CURVES[curve].generateKeyPair()
-			return acc
-		}, {} as { [C in CurveType]: KeyPair })
-
 	let sessionId = new Uint8Array()
 	let handshakeMsgs: Uint8Array[] = []
 	let cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP | undefined = undefined
@@ -80,7 +71,7 @@ export function makeTLSClient({
 				break
 			case PACKET_TYPE.WRAPPED_RECORD:
 				logger.trace('recv wrapped record')
-				const decrypted = decryptWrappedRecord(
+				const decrypted = await decryptWrappedRecord(
 					content,
 					{
 						authTag,
@@ -89,7 +80,6 @@ export function makeTLSClient({
 						recordHeader: header,
 						recordNumber: recordRecvCount,
 						cipherSuite: cipherSuite!,
-						crypto,
 					}
 				)
 				data = decrypted.plaintext
@@ -157,7 +147,7 @@ export function makeTLSClient({
 				case SUPPORTED_RECORD_TYPE_MAP.SERVER_HELLO:
 					logger.trace('received server hello')
 
-					const hello = parseServerHello(content)
+					const hello = await parseServerHello(content)
 					if(!hello.supportsPsk && earlySecret) {
 						throw new Error('Server does not support PSK')
 					}
@@ -165,16 +155,21 @@ export function makeTLSClient({
 					cipherSuite = hello.cipherSuite
 					keyType = hello.publicKeyType
 
-					const masterKey = CURVES[keyType].calculateSharedKey(
-						keyPairs[keyType].privKey,
+					const { 
+						keyPair,
+						algorithm
+					} = await getKeyPair(keyType)
+					const masterSecret = await crypto.calculateSharedSecret(
+						algorithm,
+						keyPair.privKey,
 						hello.publicKey
 					)
 
-					keys = computeSharedKeys({
+					keys = await computeSharedKeys({
 						hellos: handshakeMsgs,
 						cipherSuite: hello.cipherSuite,
 						secretType: 'hs',
-						masterSecret: masterKey,
+						masterSecret,
 						earlySecret,
 					})
 
@@ -219,11 +214,11 @@ export function makeTLSClient({
 					await processServerFinish(content)
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.KEY_UPDATE:
-					const newMasterSecret = computeUpdatedTrafficMasterSecret(
+					const newMasterSecret = await computeUpdatedTrafficMasterSecret(
 						keys!.serverSecret,
 						cipherSuite!
 					)
-					const newKeys = deriveTrafficKeysForSide(newMasterSecret, cipherSuite!)
+					const newKeys = await deriveTrafficKeysForSide(newMasterSecret, cipherSuite!)
 					keys = {
 						...keys!,
 						serverSecret: newMasterSecret,
@@ -337,7 +332,7 @@ export function makeTLSClient({
 		logger.debug('received server finish')
 
 		//derive server keys now to streamline handshake messages handling
-		const serverKeys = computeSharedKeys({
+		const serverKeys = await computeSharedKeys({
 			// we only use handshake messages till the server finish
 			hellos: handshakeMsgs,
 			cipherSuite: cipherSuite!,
@@ -360,7 +355,7 @@ export function makeTLSClient({
 		// this might add an extra message to handshakeMsgs and affect handshakeHash
 		await sendClientCertificate()
 
-		const clientFinish = packFinishMessagePacket({
+		const clientFinish = await packFinishMessagePacket({
 			secret: keys!.clientSecret,
 			handshakeMessages: handshakeMsgs,
 			cipherSuite: cipherSuite!
@@ -400,7 +395,7 @@ export function makeTLSClient({
 		const dataLen = opts.data.length + 1 + AUTH_TAG_BYTE_LENGTH
 		const header = packPacketHeader(dataLen, opts)
 
-		const { ciphertext, authTag } = encryptWrappedRecord(
+		const { ciphertext, authTag } = await encryptWrappedRecord(
 			{ plaintext: opts.data, contentType: opts.contentType },
 			{
 				key: keys!.clientEncKey,
@@ -408,7 +403,6 @@ export function makeTLSClient({
 				recordHeader: header,
 				recordNumber: recordSendCount,
 				cipherSuite: cipherSuite!,
-				crypto
 			}
 		)
 
@@ -438,6 +432,18 @@ export function makeTLSClient({
 
 		ended = true
 		ev.emit('end', { error })
+	}
+
+	async function getKeyPair(keyType: keyof typeof SUPPORTED_KEY_TYPE_MAP) {
+		const algorithm = SUPPORTED_KEY_TYPE_MAP[keyType].algorithm
+		if(!keyPairs[keyType]) {
+			keyPairs[keyType] = await crypto.generateKeyPair(algorithm)
+		}
+
+		return {
+			algorithm,
+			keyPair: keyPairs[keyType]!
+		}
 	}
 
 	return {
@@ -483,17 +489,22 @@ export function makeTLSClient({
 				throw new Error('Handshake already done')
 			}
 
-			sessionId = randomBytes(32)
+			sessionId = crypto.randomBytes(32)
 			ended = false
 
-			const clientHello = packClientHello({
+			const clientHello = await packClientHello({
 				host,
-				keysToShare: Object.entries(keyPairs)
-					.map(([keyType, keyPair]) => ({
-						type: keyType as CurveType,
-						key: keyPair.pubKey
-					})),
-				random: opts?.random || randomBytes(32),
+				keysToShare: await Promise.all(
+					SUPPORTED_KEY_TYPES
+						.map(async(keyType) => {
+							const { keyPair } = await getKeyPair(keyType)
+							return {
+								type: keyType,
+								key: keyPair.pubKey,
+							}
+						})
+				),
+				random: opts?.random || crypto.randomBytes(32),
 				sessionId,
 				psk: opts?.psk,
 				cipherSuites
@@ -524,11 +535,11 @@ export function makeTLSClient({
 				contentType: 'HANDSHAKE'
 			})
 
-			const newMasterSecret = computeUpdatedTrafficMasterSecret(
+			const newMasterSecret = await computeUpdatedTrafficMasterSecret(
 				keys!.clientSecret,
 				cipherSuite!
 			)
-			const newKeys = deriveTrafficKeysForSide(newMasterSecret, cipherSuite!)
+			const newKeys = await deriveTrafficKeysForSide(newMasterSecret, cipherSuite!)
 			keys = {
 				...keys!,
 				clientSecret: newMasterSecret,

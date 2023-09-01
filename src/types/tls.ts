@@ -2,25 +2,6 @@ import type { Logger } from 'pino'
 import type { SUPPORTED_CIPHER_SUITE_MAP } from '../utils/constants'
 import type { X509Certificate } from './x509'
 
-type TLSCryptoCryptOptions = {
-	key: Uint8Array
-	iv: Uint8Array
-	data: Uint8Array
-	aead: Uint8Array
-	authTag?: Uint8Array
-}
-
-export type TLSCrypto = {
-	encrypt(
-		cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP,
-		opts: TLSCryptoCryptOptions
-	): { ciphertext: Uint8Array, authTag: Uint8Array }
-	decrypt(
-		cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP,
-		opts: TLSCryptoCryptOptions
-	): { plaintext: Uint8Array }
-}
-
 export type TLSPacket = {
 	header: Uint8Array
 	content: Uint8Array
@@ -43,10 +24,6 @@ export type TLSConnectionOptions = {
 	 * if provided, the server certificate will be verified against these root CAs
 	 */
 	rootCAs?: X509Certificate[]
-
-	/** crypto functions */
-	crypto?: TLSCrypto
-
 	/** the cipher suites the client will claim it supports */
 	cipherSuites?: (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
 }

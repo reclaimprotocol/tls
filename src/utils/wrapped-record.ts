@@ -1,19 +1,18 @@
-import { TLSCrypto } from '../types'
 import { concatenateUint8Arrays, xor } from './generics'
 import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { NODEJS_TLS_CRYPTO } from './decryption-utils'
+import { crypto } from '../crypto'
+import { Key } from '../types'
 
 type WrappedRecordCipherOptions = {
 	authTag?: Uint8Array
 	iv: Uint8Array
-	key: Uint8Array
+	key: Key
 	recordHeader: Uint8Array
 	recordNumber: number | undefined
 	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
-	crypto?: TLSCrypto
 }
 
-export function decryptWrappedRecord(
+export async function decryptWrappedRecord(
 	encryptedData: Uint8Array,
 	{
 		authTag,
@@ -22,15 +21,14 @@ export function decryptWrappedRecord(
 		recordHeader,
 		recordNumber,
 		cipherSuite,
-		crypto,
 	}: WrappedRecordCipherOptions
 ) {
-	crypto ||= NODEJS_TLS_CRYPTO
+	const { cipher } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	iv = recordNumber === undefined
 		? iv
 		: generateIV(iv, recordNumber)
-	const { plaintext } = crypto.decrypt(
-		cipherSuite,
+	const { plaintext } = await crypto.authenticatedDecrypt(
+		cipher,
 		{
 			key,
 			iv,
@@ -50,7 +48,7 @@ export function decryptWrappedRecord(
 	}
 }
 
-export function encryptWrappedRecord(
+export async function encryptWrappedRecord(
 	{ plaintext, contentType }: { plaintext: Uint8Array, contentType: keyof typeof CONTENT_TYPE_MAP },
 	{
 		key,
@@ -58,17 +56,16 @@ export function encryptWrappedRecord(
 		recordHeader,
 		recordNumber,
 		cipherSuite,
-		crypto,
 	}: WrappedRecordCipherOptions
 ) {
-	crypto ||= NODEJS_TLS_CRYPTO
+	const { cipher } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	const completePlaintext = concatenateUint8Arrays([
 		plaintext,
 		new Uint8Array([ CONTENT_TYPE_MAP[contentType] ])
 	])
 	iv = recordNumber === undefined ? iv : generateIV(iv, recordNumber)
-	return crypto.encrypt(
-		cipherSuite,
+	return crypto.authenticatedEncrypt(
+		cipher,
 		{
 			key,
 			iv,

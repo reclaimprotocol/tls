@@ -1,8 +1,9 @@
+import { crypto } from '../crypto'
 import { CURRENT_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_CIPHER_SUITES, SUPPORTED_EXTENSION_MAP, SUPPORTED_EXTENSIONS, SUPPORTED_KEY_TYPE_MAP, SUPPORTED_KEY_TYPES } from './constants'
 import { areUint8ArraysEqual, uint8ArrayToDataView } from './generics'
 import { expectReadWithLength } from './packets'
 
-export function parseServerHello(data: Uint8Array) {
+export async function parseServerHello(data: Uint8Array) {
 	const serverVersion = read(2)
 	const serverRandom = read(32)
 	const sessionId = readWLength(1)
@@ -38,7 +39,7 @@ export function parseServerHello(data: Uint8Array) {
 			case 'KEY_SHARE':
 				const typeBytes = extData.slice(0, 2)
 				publicKeyType = SUPPORTED_KEY_TYPES
-					.find(k => areUint8ArraysEqual(SUPPORTED_KEY_TYPE_MAP[k], typeBytes))
+					.find(k => areUint8ArraysEqual(SUPPORTED_KEY_TYPE_MAP[k].identifier, typeBytes))
 				if(!publicKeyType) {
 					throw new Error(`Unsupported key type '${typeBytes}'`)
 				}
@@ -62,7 +63,10 @@ export function parseServerHello(data: Uint8Array) {
 		serverRandom,
 		sessionId,
 		cipherSuite,
-		publicKey,
+		publicKey: await crypto.importPublicKey(
+			SUPPORTED_KEY_TYPE_MAP[publicKeyType].algorithm,
+			publicKey
+		),
 		publicKeyType,
 		supportsPsk
 	}

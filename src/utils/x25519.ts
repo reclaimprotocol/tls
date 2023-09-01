@@ -10,7 +10,7 @@ const PRIVATE_KEY_DER_PREFIX = Buffer.from([
 	48, 46, 2, 1, 0, 48, 5, 6, 3, 43, 101, 110, 4, 34, 4, 32
 ])
 
-export function calculateSharedKey(privKey: Buffer, pubKey: Buffer) {
+export function calculateSharedSecret(privKey: Buffer, pubKey: Buffer) {
 	if(typeof createPrivateKey === 'function' && typeof createPublicKey === 'function') {
 		const nodePrivateKey = createPrivateKey({
 			key: Buffer.concat([PRIVATE_KEY_DER_PREFIX, privKey]),

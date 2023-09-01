@@ -1,13 +1,13 @@
-import { createHmac, randomBytes } from 'crypto'
-import { TLSPresharedKey } from '../types'
+import { Key, TLSPresharedKey } from '../types'
 import { getHash } from '../utils/decryption-utils'
 import { COMPRESSION_MODE, CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_KEY_TYPE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
 import { packWith3ByteLength, packWithLength } from './packets'
 import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
+import { crypto } from '../crypto'
 
 type SupportedKeyType = keyof typeof SUPPORTED_KEY_TYPE_MAP
 
-type PublicKeyData = { type: SupportedKeyType, key: Uint8Array }
+type PublicKeyData = { type: SupportedKeyType, key: Key }
 
 type ClientHelloOptions = {
 	host: string
@@ -25,7 +25,7 @@ type ExtensionData = {
 	lengthBytes?: number
 }
 
-export function packClientHello({
+export async function packClientHello({
 	host,
 	sessionId,
 	random,
@@ -34,8 +34,8 @@ export function packClientHello({
 	cipherSuites,
 }: ClientHelloOptions) {
 	// generate random & sessionId if not provided
-	random = random || randomBytes(32)
-	sessionId = sessionId || randomBytes(32)
+	random = random || crypto.randomBytes(32)
+	sessionId = sessionId || crypto.randomBytes(32)
 
 	const packedSessionId = packWithLength(sessionId).slice(1)
 	const cipherSuiteList = (cipherSuites || Object.keys(SUPPORTED_CIPHER_SUITE_MAP))
@@ -48,7 +48,7 @@ export function packClientHello({
 		packVersionsExtension(),
 		packSignatureAlgorithmsExtension(),
 		packPresharedKeyModeExtension(),
-		packKeyShareExtension(keysToShare)
+		await packKeyShareExtension(keysToShare)
 	]
 
 	if(psk) {
@@ -74,25 +74,20 @@ export function packClientHello({
 	if(psk) {
 		const { hashLength } = SUPPORTED_CIPHER_SUITE_MAP[psk.cipherSuite]
 		const prefixHandshake = packedHandshake.slice(0, - hashLength - 3)
-		const binder = computeBinderSuffix(
+		const binder = await computeBinderSuffix(
 			prefixHandshake,
 			psk
 		)
-		binder.copy(packedHandshake, packedHandshake.length - binder.length)
+		packedHandshake.set(binder, packedHandshake.length - binder.length)
 	}
 
 	return packedHandshake
 }
 
-export function computeBinderSuffix(packedHandshakePrefix: Uint8Array, psk: TLSPresharedKey) {
+export async function computeBinderSuffix(packedHandshakePrefix: Uint8Array, psk: TLSPresharedKey) {
 	const { hashAlgorithm } = SUPPORTED_CIPHER_SUITE_MAP[psk.cipherSuite]
-
-	const hashedHelloHandshake = getHash([ packedHandshakePrefix ], psk.cipherSuite)
-
-	const binder = createHmac(hashAlgorithm, psk.finishKey)
-		.update(hashedHelloHandshake)
-		.digest()
-	return binder
+	const hashedHelloHandshake = await getHash([ packedHandshakePrefix ], psk.cipherSuite)
+	return crypto.hmac(hashAlgorithm, psk.finishKey, hashedHelloHandshake)
 }
 
 /**
@@ -172,16 +167,18 @@ function packSupportedGroupsExtension() {
 		type: 'SUPPORTED_GROUPS',
 		data: concatenateUint8Arrays(
 			Object.values(SUPPORTED_KEY_TYPE_MAP)
+				.map(v => v.identifier)
 		)
 	})
 }
 
-function packKeyShareExtension(keys: PublicKeyData[]) {
+async function packKeyShareExtension(keys: PublicKeyData[]) {
 	const buffs: Uint8Array[] = []
 	for(const { key, type } of keys) {
+		const exportedKey = await crypto.exportPublicKey(key)
 		buffs.push(
-			SUPPORTED_KEY_TYPE_MAP[type],
-			packWithLength(key)
+			SUPPORTED_KEY_TYPE_MAP[type].identifier,
+			packWithLength(exportedKey)
 		)
 	}
 

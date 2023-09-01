@@ -95,22 +95,16 @@ export async function verifyCertificateSignature({
 	hellos,
 	cipherSuite
 }: VerifySignatureOptions) {
-	const {
-		verify
-	} = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm]
-	const data = getSignatureData()
-	if(typeof publicKey === 'string') {
-		throw new Error('Cannot verify signature with string public key')
-	}
-
+	const { verify } = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm]
+	const data = await getSignatureData()
 	const verified = await verify(data, signature, publicKey)
 
 	if(!verified) {
 		throw new Error(`${algorithm} signature verification failed`)
 	}
 
-	function getSignatureData() {
-		const handshakeHash = getHash(hellos, cipherSuite)
+	async function getSignatureData() {
+		const handshakeHash = await getHash(hellos, cipherSuite)
 		const content = concatenateUint8Arrays([
 			new Uint8Array(64).fill(0x20),
 			CERT_VERIFY_TXT,

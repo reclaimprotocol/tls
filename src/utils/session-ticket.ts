@@ -1,10 +1,9 @@
-import { createHash } from 'crypto'
-import { extract } from 'futoin-hkdf'
 import { TLSSessionTicket } from '../types'
 import { getHash, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
 import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { expectReadWithLength } from './packets'
 import { uint8ArrayToDataView } from './generics'
+import { crypto } from '../crypto'
 
 type GetResumableSessionTicketOptions = {
 	masterKey: Uint8Array
@@ -47,7 +46,7 @@ export function parseSessionTicket(data: Uint8Array) {
 	}
 }
 
-export function getPskFromTicket(
+export async function getPskFromTicket(
 	ticket: TLSSessionTicket,
 	{
 		masterKey,
@@ -56,18 +55,17 @@ export function getPskFromTicket(
 	}: GetResumableSessionTicketOptions
 ) {
 	const { hashAlgorithm, hashLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
-	const handshakeHash = getHash(hellos, cipherSuite)
+	const handshakeHash = await getHash(hellos, cipherSuite)
 
-	const resumeMasterSecret = hkdfExtractAndExpandLabel(hashAlgorithm, masterKey, 'res master', handshakeHash, hashLength)
-	const psk = hkdfExtractAndExpandLabel(hashAlgorithm, resumeMasterSecret, 'resumption', ticket.nonce, hashLength)
+	const resumeMasterSecret = await hkdfExtractAndExpandLabel(hashAlgorithm, masterKey, 'res master', handshakeHash, hashLength)
+	const psk = await hkdfExtractAndExpandLabel(hashAlgorithm, resumeMasterSecret, 'resumption', ticket.nonce, hashLength)
 
-	const emptyHash = createHash(hashAlgorithm).update('').digest()
-	const earlySecret = extract(hashAlgorithm, hashLength, psk, '')
+	const emptyHash = await crypto.hash(hashAlgorithm, new Uint8Array())
+	const earlySecret = await crypto.extract(hashAlgorithm, hashLength, psk, '')
 
-	const binderKey = hkdfExtractAndExpandLabel(hashAlgorithm, earlySecret, 'res binder', emptyHash, hashLength)
-
+	const binderKey = await hkdfExtractAndExpandLabel(hashAlgorithm, earlySecret, 'res binder', emptyHash, hashLength)
 	// const clientEarlyTrafficSecret = hkdfExtractAndExpandLabel(hashAlgorithm, earlySecret, 'c e traffic', new Uint8Array(), hashLength)
-	const finishKey = hkdfExtractAndExpandLabel(hashAlgorithm, binderKey, 'finished', new Uint8Array(), hashLength)
+	const finishKey = await hkdfExtractAndExpandLabel(hashAlgorithm, binderKey, 'finished', new Uint8Array(), hashLength)
 
 	const ticketAge = Math.floor(ticket.lifetimeS / 1000 + ticket.ticketAgeAddMs)
 

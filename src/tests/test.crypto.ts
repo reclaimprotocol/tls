@@ -5,27 +5,34 @@ import { verifyCertificateChain, verifyCertificateSignature } from '../utils/par
 import { getPskFromTicket, parseSessionTicket } from '../utils/session-ticket'
 import { TLSPresharedKey } from '../types'
 import { loadX509FromPem } from '../utils/x509'
-import { CURVES } from '../utils/curve'
 import { computeSharedKeys } from '../utils/decryption-utils'
 import { bufferFromHexStringWithWhitespace, toHexStringWithWhitespace } from '../utils/generics'
 import { expectBuffsEq } from './utils'
+import { crypto } from '../crypto'
 
-const curve = CURVES['X25519']
+const curve = 'ED25519'
 
 describe('Crypto Tests', () => {
 
 	// test case from: https://tls13.xargs.org
-	it('should correctly compute handshake keys', () => {
-		const masterKey = curve.calculateSharedKey(
-			Buffer.from('202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f', 'hex'),
-			Buffer.from('9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615', 'hex'),
+	it('should correctly compute handshake keys', async() => {
+		const masterKey = await crypto.calculateSharedSecret(
+			curve,
+			await crypto.importPrivateKey(
+				curve,
+				Buffer.from('202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f', 'hex'),
+			),
+			await crypto.importPublicKey(
+				curve,
+				Buffer.from('9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615', 'hex'),
+			),
 		)
 
 		expect(toHexStringWithWhitespace(masterKey, '')).toEqual(
 			'df4a291baa1eb7cfa6934b29b474baad2697e29f1f920dcc77c8a0a088447624'
 		)
 
-		const result = computeSharedKeys({
+		const result = await computeSharedKeys({
 			hellos: [
 				bufferFromHexStringWithWhitespace(
 					'01 00 00 f4 03 03 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20 e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 ea eb ec ed ee ef f0 f1 f2 f3 f4 f5 f6 f7 f8 f9 fa fb fc fd fe ff 00 08 13 02 13 03 13 01 00 ff 01 00 00 a3 00 00 00 18 00 16 00 00 13 65 78 61 6d 70 6c 65 2e 75 6c 66 68 65 69 6d 2e 6e 65 74 00 0b 00 04 03 00 01 02 00 0a 00 16 00 14 00 1d 00 17 00 1e 00 19 00 18 01 00 01 01 01 02 01 03 01 04 00 23 00 00 00 16 00 00 00 17 00 00 00 0d 00 1e 00 1c 04 03 05 03 06 03 08 07 08 08 08 09 08 0a 08 0b 08 04 08 05 08 06 04 01 05 01 06 01 00 2b 00 03 02 03 04 00 2d 00 02 01 01 00 33 00 26 00 24 00 1d 00 20 35 80 72 d6 36 58 80 d1 ae ea 32 9a df 91 21 38 38 51 ed 21 a2 8e 3b 75 e9 65 d0 d2 cd 16 62 54'
@@ -50,10 +57,17 @@ describe('Crypto Tests', () => {
 		)
 	})
 
-	it('should correctly compute provider keys', () => {
-		const masterKey = curve.calculateSharedKey(
-			Buffer.from('202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f', 'hex'),
-			Buffer.from('9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615', 'hex'),
+	it('should correctly compute provider keys', async() => {
+		const masterKey = await crypto.calculateSharedSecret(
+			curve,
+			await crypto.importPrivateKey(
+				curve,
+				Buffer.from('202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f', 'hex'),
+			),
+			await crypto.importPublicKey(
+				curve,
+				Buffer.from('9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615', 'hex'),
+			)
 		)
 
 		expect(toHexStringWithWhitespace(masterKey, '')).toEqual(
@@ -81,30 +95,31 @@ describe('Crypto Tests', () => {
 			)
 		]
 
-		const { masterSecret } = computeSharedKeys({
+		const { masterSecret } = await computeSharedKeys({
 			hellos: hellos.slice(0, 2),
 			masterSecret: masterKey,
 			secretType: 'hs',
 			cipherSuite: 'TLS_CHACHA20_POLY1305_SHA256',
 		})
 
-		const result = computeSharedKeys({
+		const result = await computeSharedKeys({
 			hellos,
 			masterSecret,
 			secretType: 'ap',
 			cipherSuite: 'TLS_CHACHA20_POLY1305_SHA256'
 		})
+		const clientEncKey = await crypto.exportKey(result.clientEncKey)
 
-		expect(result.serverIv.toString('hex')).toEqual(
+		expect(toHexStringWithWhitespace(result.serverIv, '')).toEqual(
 			'a5e665c5599c95eeab6eb657'
 		)
-		expect(result.clientEncKey.toString('hex')).toEqual(
+		expect(toHexStringWithWhitespace(clientEncKey, '')).toEqual(
 			'40c54418e38e52d5b976c0feca905eb8261604c2efcfabad39a060ddb7ab4bc8'
 		)
 	})
 
 	// from: https://datatracker.ietf.org/doc/html/draft-ietf-tls-tls13-vectors
-	it('should parse a session ticket correctly', () => {
+	it('should parse a session ticket correctly', async() => {
 		const ticketPacked = bufferFromHexStringWithWhitespace(
 			`04 00 00 c9 00 00 00 1e fa d6 aa
 			c5 02 00 00 00 b2 2c 03 5d 82 93 59 ee 5f f7 af 4e c9 00 00 00
@@ -128,7 +143,7 @@ describe('Crypto Tests', () => {
 		)
 		expect(Array.from(parsed.nonce)).toEqual([0, 0])
 
-		const ticketData = getPskFromTicket(parsed, {
+		const ticketData = await getPskFromTicket(parsed, {
 			masterKey: bufferFromHexStringWithWhitespace(
 				`18 df 06 84 3d 13 a0 8b f2 a4 49 84 4c 5f 8a
 				47 80 01 bc 4d 4c 62 79 84 d5 a4 1d a8 d0 40 29 19`
@@ -181,25 +196,32 @@ describe('Crypto Tests', () => {
          fa d6 aa cb
 		`)
 		const ext = packPresharedKeyExtension(ticketData)
-		const binder = computeBinderSuffix(helloPrefix, ticketData)
-		binder.copy(ext, ext.length - binder.length)
+		const binder = await computeBinderSuffix(helloPrefix, ticketData)
+		ext.set(binder, ext.length - binder.length)
 
 		expectBuffsEq(ext, expectedExtBytes)
 	})
 
 	// from: https://datatracker.ietf.org/doc/html/draft-ietf-tls-tls13-vectors
-	it('should generate the correct resume handshake keys', () => {
+	it('should generate the correct resume handshake keys', async() => {
 		const ticket: Pick<TLSPresharedKey, 'earlySecret'> = {
 			earlySecret: bufferFromHexStringWithWhitespace(
 				'9b 21 88 e9 b2 fc 6d 64 d7 1d c3 29 90 0e 20 bb 41 91 50 00 f6 78 aa 83 9c bb 79 7c b7 d8 33 2c'
 			)
 		}
 
-		const sharedkey = curve.calculateSharedKey(
-			bufferFromHexStringWithWhitespace(`de 5b 44 76 e7 b4 90 b2 65 2d 33 8a cb
-			f2 94 80 66 f2 55 f9 44 0e 23 b9 8f c6 98 35 29 8d c1 07`),
-			bufferFromHexStringWithWhitespace(`e4 ff b6 8a c0 5f 8d 96 c9 9d a2 66 98 34
-			6c 6b e1 64 82 ba dd da fe 05 1a 66 b4 f1 8d 66 8f 0b`)
+		const sharedkey = await crypto.calculateSharedSecret(
+			curve,
+			await crypto.importPrivateKey(
+				curve,
+				bufferFromHexStringWithWhitespace(`de 5b 44 76 e7 b4 90 b2 65 2d 33 8a cb
+					f2 94 80 66 f2 55 f9 44 0e 23 b9 8f c6 98 35 29 8d c1 07`)
+			),
+			await crypto.importPublicKey(
+				curve,
+				bufferFromHexStringWithWhitespace(`e4 ff b6 8a c0 5f 8d 96 c9 9d a2 66 98 34
+					6c 6b e1 64 82 ba dd da fe 05 1a 66 b4 f1 8d 66 8f 0b`)
+			)
 		)
 
 		const clientHello = bufferFromHexStringWithWhitespace(`
@@ -238,15 +260,16 @@ describe('Crypto Tests', () => {
          45 12 ab 47 f1 15 e8 6e ff 50 94 2c ea 31 00 2b 00 02 03 04
 		`)
 
-		const keys = computeSharedKeys({
+		const keys = await computeSharedKeys({
 			masterSecret: sharedkey,
 			earlySecret: ticket.earlySecret,
 			cipherSuite: 'TLS_CHACHA20_POLY1305_SHA256',
 			secretType: 'hs',
 			hellos: [clientHello, serverHello]
 		})
+		const serverEncKey = await crypto.exportKey(keys.serverEncKey)
 
-		expect(toHexStringWithWhitespace(keys.serverEncKey)).toEqual(
+		expect(toHexStringWithWhitespace(serverEncKey)).toEqual(
 			'a6 7e 92 e7 8c 02 8e 0c 52 33 fb 0b 3c e3 df 6a f0 39 62 eb 06 bc 0c 92 93 d8 4a 49 ca 44 4f f4'
 		)
 		expect(toHexStringWithWhitespace(keys.clientIv)).toEqual(

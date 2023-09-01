@@ -1,18 +1,21 @@
 
-type Key = Uint8Array
+export type Key = CryptoKey
 
-type SymmetricCryptoAlgorithm = 'AES-GCM'
+export type SymmetricCryptoAlgorithm = 'AES-256-GCM'
+	| 'AES-128-GCM'
 	| 'CHACHA20-POLY1305'
-type CurveAlgorithm = 'RSA-PSS-RSAE-SHA256'
+export type CurveAlgorithm = 'RSA-PSS-RSAE-SHA256'
 	| 'ED25519'
 	| 'RSA-PKCS1-SHA512'
 	| 'ECDSA-SECP256R1-SHA256'
+
+export type HashAlgorithm = 'SHA-256' | 'SHA-384'
 type CryptoAlgorithm = SymmetricCryptoAlgorithm
 
 type Awaitable<T> = T | Promise<T>
 
 type AuthenticatedCryptOptions = {
-	key: Uint8Array
+	key: Key
 	iv: Uint8Array
 	data: Uint8Array
 	aead: Uint8Array
@@ -32,12 +35,19 @@ export type KeyPair = {
 
 export type CurveImplementation = {
 	generateKeyPair(): KeyPair
-	calculateSharedKey(privateKey: Key, publicKey: Key): Key
+	calculateSharedSecret(privateKey: Key, publicKey: Key): Key
 }
 
 export type Crypto = {
 	importKey(raw: Uint8Array, alg: CryptoAlgorithm): Awaitable<Key>
 	exportKey(key: Key): Awaitable<Uint8Array>
+
+	generateKeyPair(alg: CurveAlgorithm): Awaitable<KeyPair>
+	calculateSharedSecret(alg: CurveAlgorithm, privateKey: Key, publicKey: Key): Awaitable<Uint8Array>
+	exportPublicKey(key: Key): Awaitable<Uint8Array>
+	importPrivateKey(alg: CurveAlgorithm, raw: Uint8Array): Awaitable<Key>
+	importPublicKey(alg: CurveAlgorithm, raw: Uint8Array): Awaitable<Key>
+
 	randomBytes(length: number): Uint8Array
 	authenticatedEncrypt(
 		cipherSuite: SymmetricCryptoAlgorithm,
@@ -51,4 +61,9 @@ export type Crypto = {
 		alg: CurveAlgorithm,
 		opts: VerifyOptions
 	): Awaitable<boolean>
+
+	hash(alg: HashAlgorithm, data: Uint8Array): Awaitable<Uint8Array>
+	hmac(alg: HashAlgorithm, key: Uint8Array, data: Uint8Array): Awaitable<Uint8Array>
+	extract(alg: HashAlgorithm, hashLength: number, ikm: Uint8Array, salt: Uint8Array | string): Awaitable<Uint8Array>
+	expand(alg: HashAlgorithm, hashLength: number, key: Uint8Array, expLength: number, label: Uint8Array): Awaitable<Uint8Array>
 }
