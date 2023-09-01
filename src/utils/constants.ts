@@ -1,5 +1,3 @@
-import type { SignatureAlgorithm } from '../types'
-
 // TLS 1.2 -- used in header of all messages
 export const LEGACY_PROTOCOL_VERSION = new Uint8Array([ 0x03, 0x03 ])
 // TLS 1.3
@@ -103,17 +101,7 @@ export const ALERT_DESCRIPTION = {
 
 export const SUPPORTED_CIPHER_SUITES = Object.keys(SUPPORTED_CIPHER_SUITE_MAP) as (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
 
-type SignatureAlgType = 'RSA_PSS_RSAE_SHA256'
-	| 'ED25519'
-	| 'RSA_PKCS1_SHA512'
-	| 'ECDSA_SECP256R1_SHA256'
-
-type SupportedSignatureAlg = {
-	identifier: Uint8Array
-	algorithm: SignatureAlgorithm
-}
-
-export const SUPPORTED_SIGNATURE_ALGS_MAP: { [K in SignatureAlgType]: SupportedSignatureAlg } = {
+export const SUPPORTED_SIGNATURE_ALGS_MAP = {
 	RSA_PSS_RSAE_SHA256: {
 		identifier: new Uint8Array([ 0x08, 0x04 ]),
 		algorithm: 'RSA-PSS-SHA256',
@@ -130,7 +118,7 @@ export const SUPPORTED_SIGNATURE_ALGS_MAP: { [K in SignatureAlgType]: SupportedS
 		identifier: new Uint8Array([ 0x06, 0x01 ]),
 		algorithm: 'RSA-PKCS1-SHA512'
 	},
-}
+} as const
 
 export const SUPPORTED_SIGNATURE_ALGS = Object.keys(SUPPORTED_SIGNATURE_ALGS_MAP) as (keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP)[]
 

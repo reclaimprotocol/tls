@@ -1,5 +1,4 @@
-import { Logger } from 'pino'
-import { ProcessPacket, TLSPacket } from '../types'
+import { Logger, ProcessPacket, TLSPacket } from '../types'
 import { CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, PACKET_TYPE } from './constants'
 import { areUint8ArraysEqual, concatenateUint8Arrays, uint8ArrayToDataView } from './generics'
 import { parseWrappedRecord } from './wrapped-record'

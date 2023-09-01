@@ -1,5 +1,6 @@
+import { ChaCha20Poly1305 } from '@stablelib/chacha20poly1305'
 import { webcrypto } from 'crypto'
-import { AsymmetricCryptoAlgorithm, Crypto } from '../types/crypto'
+import { AsymmetricCryptoAlgorithm, Crypto, Key } from '../types/crypto'
 import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics'
 
 const subtle = webcrypto.subtle
@@ -17,6 +18,8 @@ const SHARED_KEY_LEN_MAP: { [T in AsymmetricCryptoAlgorithm]: number } = {
 	'P-384': 48,
 }
 
+const AUTH_TAG_BYTE_LENGTH = 16
+
 export const crypto = {
 	importKey(alg, raw, ...args) {
 		let subtleArgs: Parameters<typeof subtle.importKey>[2]
@@ -32,9 +35,9 @@ export const crypto = {
 			keyUsages = ['encrypt', 'decrypt']
 			break
 		case 'CHACHA20-POLY1305':
-			subtleArgs = { name: 'AES-GCM', length: 256 }
-			keyUsages = ['encrypt', 'decrypt']
-			break
+			// chaCha20 is not supported by webcrypto
+			// so we "fake" create a key
+			return raw as unknown as Key
 		case 'SHA-256':
 		case 'SHA-384':
 			subtleArgs = {
@@ -101,6 +104,12 @@ export const crypto = {
 		)
 	},
 	async exportKey(key) {
+		// handle ChaCha20-Poly1305
+		// as that's already a Uint8Array
+		if(key instanceof Uint8Array) {
+			return key
+		}
+
 		if(
 			key.type === 'private'
 			&& (
@@ -167,44 +176,65 @@ export const crypto = {
 		return webcrypto.getRandomValues(buffer)
 	},
 	async authenticatedEncrypt(cipherSuite, { iv, aead, key, data }) {
+		let ciphertext: Uint8Array
 		if(cipherSuite === 'CHACHA20-POLY1305') {
-			throw new Error('CHACHA20-POLY1305 not supported')
+			const rawKey = key instanceof Uint8Array
+				? key
+				: await this.exportKey(key)
+
+			const cipher = new ChaCha20Poly1305(rawKey)
+			ciphertext = cipher.seal(iv, data, aead)
+		} else {
+			ciphertext = toUint8Array(
+				await subtle.encrypt(
+					{
+						name: 'AES-GCM',
+						iv,
+						additionalData: aead,
+					},
+					key,
+					data
+				)
+			)
 		}
 
-		const ciphertext = toUint8Array(
-			await subtle.encrypt(
-				{
-					name: 'AES-GCM',
-					iv,
-					additionalData: aead,
-				},
-				key,
-				data
-			)
-		)
-
 		return {
-			ciphertext: ciphertext.slice(0, -16),
-			authTag: ciphertext.slice(-16),
+			ciphertext: ciphertext.slice(0, -AUTH_TAG_BYTE_LENGTH),
+			authTag: ciphertext.slice(-AUTH_TAG_BYTE_LENGTH),
 		}
 	},
 	async authenticatedDecrypt(cipherSuite, { iv, aead, key, data, authTag }) {
-		if(cipherSuite === 'CHACHA20-POLY1305') {
-			throw new Error('CHACHA20-POLY1305 not supported')
+		if(!authTag) {
+			throw new Error('authTag is required')
 		}
 
-		const ciphertext = concatenateUint8Arrays([ data, authTag! ])
-		const plaintext = toUint8Array(
-			await subtle.decrypt(
-				{
-					name: 'AES-GCM',
-					iv,
-					additionalData: aead,
-				},
-				key,
-				ciphertext
+		const ciphertext = concatenateUint8Arrays([ data, authTag ])
+		let plaintext: Uint8Array
+		if(cipherSuite === 'CHACHA20-POLY1305') {
+			const rawKey = key instanceof Uint8Array
+				? key
+				: await this.exportKey(key)
+
+			const cipher = new ChaCha20Poly1305(rawKey)
+			plaintext = cipher.open(iv, ciphertext, aead)!
+			if(!plaintext) {
+				throw new Error(
+					'Failed to authenticate ChaCha20 ciphertext'
+				)
+			}
+		} else {
+			plaintext = toUint8Array(
+				await subtle.decrypt(
+					{
+						name: 'AES-GCM',
+						iv,
+						additionalData: aead,
+					},
+					key,
+					ciphertext
+				)
 			)
-		)
+		}
 
 		return { plaintext }
 	},

@@ -1,7 +1,9 @@
-import P from 'pino'
+import { Logger } from '../types'
 
-const logger = P()
-const defLogLevel = process.env.NODE_ENV === 'test' ? 'debug' : 'info'
-logger.level = process.env.LOG_LEVEL || defLogLevel
-
-export default logger
+export const logger: Logger = {
+	info: console.info.bind(console),
+	debug: console.debug.bind(console),
+	trace: () => {},
+	warn: console.warn.bind(console),
+	error: console.error.bind(console),
+}

@@ -1,5 +1,5 @@
 import { TLSPacket } from '../types'
-import logger from '../utils/logger'
+import { logger } from '../utils/logger'
 import { makeMessageProcessor } from '../utils/packets'
 import { expectBuffsEq } from './utils'
 

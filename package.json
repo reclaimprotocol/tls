@@ -1,23 +1,20 @@
 {
 	"name": "@reclaimprotocol/tls",
-	"version": "1.0.1",
-	"description": "",
+	"version": "1.0.0",
+	"description": "WebCrypto Based Cross Platform TLS1.3",
 	"main": "lib/index",
 	"scripts": {
 		"build": "npm exec tsc",
 		"test": "jest",
 		"lint": "eslint . --ext .js,.ts,.jsx,.tsx",
-    	"lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx"
+		"lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx"
 	},
 	"keywords": [],
 	"author": "Adhiraj Singh",
 	"license": "ISC",
 	"dependencies": {
 		"@peculiar/x509": "^1.9.5",
-		"curve25519-js": "^0.0.4",
-		"elliptic": "^6.5.4",
-		"futoin-hkdf": "^1.5.3",
-		"pino": "^8.15.0"
+		"@stablelib/chacha20poly1305": "^1.0.1"
 	},
 	"devDependencies": {
 		"@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",

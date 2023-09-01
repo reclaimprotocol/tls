@@ -5,7 +5,7 @@ import { computeSharedKeys, computeUpdatedTrafficMasterSecret, deriveTrafficKeys
 import { packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
 import { concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
 import { packKeyUpdateRecord } from './utils/key-update'
-import LOGGER from './utils/logger'
+import { logger as LOGGER } from './utils/logger'
 import { makeQueue } from './utils/make-queue'
 import { makeMessageProcessor, PacketOptions, packPacketHeader, packWithLength, readWithLength } from './utils/packets'
 import { parseTlsAlert } from './utils/parse-alert'
@@ -37,7 +37,7 @@ export function makeTLSClient({
 	verifyServerCertificate = verifyServerCertificate !== false
 	namedCurves = namedCurves || SUPPORTED_NAMED_CURVES
 
-	const logger = _logger || LOGGER?.child({ })
+	const logger = _logger || LOGGER
 	const ev = new EventEmitter() as TLSEventEmitter
 	const processor = makeMessageProcessor(logger)
 	const { enqueue: enqueueServerPacket } = makeQueue()
