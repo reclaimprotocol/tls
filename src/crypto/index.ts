@@ -1,7 +1,8 @@
 import { ChaCha20Poly1305 } from '@stablelib/chacha20poly1305'
-import { webcrypto } from 'crypto'
+import type { webcrypto as WebCrypto } from 'crypto'
 import { AsymmetricCryptoAlgorithm, Crypto, Key } from '../types/crypto'
 import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics'
+import { webcrypto } from '../utils/webcrypto'
 
 const subtle = webcrypto.subtle
 
@@ -20,7 +21,7 @@ const SHARED_KEY_LEN_MAP: { [T in AsymmetricCryptoAlgorithm]: number } = {
 
 const AUTH_TAG_BYTE_LENGTH = 16
 
-export const crypto = {
+export const crypto: Crypto = {
 	importKey(alg, raw, ...args) {
 		let subtleArgs: Parameters<typeof subtle.importKey>[2]
 		let keyUsages: Parameters<typeof subtle.importKey>[4]
@@ -151,7 +152,7 @@ export const crypto = {
 			genKeyArgs,
 			true,
 			['deriveBits']
-		) as webcrypto.CryptoKeyPair
+		) as WebCrypto.CryptoKeyPair
 		return {
 			pubKey: keyPair.publicKey,
 			privKey: keyPair.privateKey,
@@ -317,7 +318,7 @@ export const crypto = {
 
 		return t.slice(0, expLength)
 	},
-} as Crypto
+}
 
 function toUint8Array(buffer: ArrayBuffer) {
 	return new Uint8Array(buffer)

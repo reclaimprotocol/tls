@@ -1,9 +1,11 @@
 import * as peculiar from '@peculiar/x509'
 // not using types/index to avoid circular dependency
 import type { X509Certificate } from '../types/x509'
+import { webcrypto } from './webcrypto'
+
+peculiar.cryptoProvider.set(webcrypto)
 
 export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<peculiar.X509Certificate> {
-	setCryptoIfRequired()
 	let cert: peculiar.X509Certificate
 	try {
 		cert = new peculiar.X509Certificate(pem)
@@ -40,22 +42,4 @@ export function loadX509FromDer(der: Uint8Array) {
 	// const splitText = der.toString('base64').match(/.{0,64}/g)!.join('\n')
 	// const pem = `${PEM_PREFIX}${splitText}${PEM_POSTFIX}`
 	return loadX509FromPem(der)
-}
-
-export function getWebCrypto() {
-	setCryptoIfRequired()
-	return peculiar.cryptoProvider.get()
-}
-
-let setCrypto = false
-function setCryptoIfRequired() {
-	if(!setCrypto) {
-		// const envType = detectEnvironment()
-		// if(envType === 'node') {
-		const { webcrypto } = require('crypto')
-		peculiar.cryptoProvider.set(webcrypto)
-		// }
-
-		setCrypto = true
-	}
 }
