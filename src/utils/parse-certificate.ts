@@ -1,11 +1,11 @@
+import { crypto } from '../crypto'
 import type { CertificatePublicKey, X509Certificate } from '../types'
-import { getHash } from './decryption-utils'
 import { loadX509FromDer } from '../utils/x509'
 import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
+import { getHash } from './decryption-utils'
+import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
 import { expectReadWithLength } from './packets'
 import { ROOT_CAS } from './root-ca'
-import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
-import { crypto } from '../crypto'
 
 type VerifySignatureOptions = {
 	signature: Uint8Array

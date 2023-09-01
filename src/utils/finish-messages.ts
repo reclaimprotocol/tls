@@ -1,8 +1,8 @@
+import { crypto } from '../crypto'
 import { getHash, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
 import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_RECORD_TYPE_MAP } from './constants'
-import { packWithLength } from './packets'
 import { areUint8ArraysEqual, concatenateUint8Arrays } from './generics'
-import { crypto } from '../crypto'
+import { packWithLength } from './packets'
 
 type VerifyFinishMessageOptions = {
 	secret: Uint8Array

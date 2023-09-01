@@ -26,8 +26,8 @@ type AuthenticatedCryptOptions = {
 }
 
 type VerifyOptions = {
-	data: Uint8Array,
-	signature: Uint8Array,
+	data: Uint8Array
+	signature: Uint8Array
 	publicKey: Key
 }
 

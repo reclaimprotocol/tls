@@ -20,7 +20,7 @@ export async function parseServerHello(data: Uint8Array) {
 	if(compressionMethod !== 0x00) {
 		throw new Error(`Unsupported compression method '${compressionMethod.toString(16)}'`)
 	}
-	
+
 	const extensionsLength = uint8ArrayToDataView(read(2)).getUint16(0)
 	let publicKey: Uint8Array | undefined
 	let publicKeyType: keyof typeof SUPPORTED_KEY_TYPE_MAP | undefined

@@ -1,7 +1,7 @@
-import { concatenateUint8Arrays, xor } from './generics'
-import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { crypto } from '../crypto'
 import { Key } from '../types'
+import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
+import { concatenateUint8Arrays, xor } from './generics'
 
 type WrappedRecordCipherOptions = {
 	authTag?: Uint8Array

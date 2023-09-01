@@ -1,8 +1,8 @@
-import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { packWithLength } from './packets'
-import { HashAlgorithm, Key } from '../types'
-import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
 import { crypto } from '../crypto'
+import { HashAlgorithm } from '../types'
+import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
+import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
+import { packWithLength } from './packets'
 
 type DeriveTrafficKeysOptions = {
 	masterSecret: Uint8Array
@@ -107,7 +107,7 @@ export async function hkdfExtractAndExpandLabel(algorithm: HashAlgorithm, secret
 		packWithLength(context).slice(1)
 	])
 
-	const key = await crypto.importKey(algorithm, secret) 
+	const key = await crypto.importKey(algorithm, secret)
 	return crypto.expand(algorithm, length, key, length, hkdfLabel)
 }
 

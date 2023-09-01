@@ -1,7 +1,7 @@
 import type { Logger } from 'pino'
 import type { SUPPORTED_CIPHER_SUITE_MAP } from '../utils/constants'
-import type { X509Certificate } from './x509'
 import { Key } from './crypto'
+import type { X509Certificate } from './x509'
 
 export type TLSPacket = {
 	header: Uint8Array

@@ -5,7 +5,9 @@
 	"main": "lib/index",
 	"scripts": {
 		"build": "npm exec tsc",
-		"test": "jest"
+		"test": "jest",
+		"lint": "eslint . --ext .js,.ts,.jsx,.tsx",
+    	"lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx"
 	},
 	"keywords": [],
 	"author": "Adhiraj Singh",

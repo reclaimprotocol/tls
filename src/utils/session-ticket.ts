@@ -1,9 +1,9 @@
+import { crypto } from '../crypto'
 import { TLSSessionTicket } from '../types'
 import { getHash, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
 import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { expectReadWithLength } from './packets'
 import { uint8ArrayToDataView } from './generics'
-import { crypto } from '../crypto'
+import { expectReadWithLength } from './packets'
 
 type GetResumableSessionTicketOptions = {
 	masterKey: Uint8Array

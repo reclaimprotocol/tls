@@ -1,11 +1,11 @@
 import Chance from 'chance'
 import { Socket } from 'net'
-import { makeTLSClient } from '../'
+import { crypto } from '../crypto'
 import { TLSPresharedKey, TLSSessionTicket } from '../types'
+import { strToUint8Array } from '../utils/generics'
+import { makeTLSClient } from '../'
 import { createMockTLSServer } from './mock-tls-server'
 import { delay } from './utils'
-import { strToUint8Array } from '../utils/generics'
-import { crypto } from '../crypto'
 
 const chance = new Chance()
 

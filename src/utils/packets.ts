@@ -1,8 +1,8 @@
 import { Logger } from 'pino'
 import { ProcessPacket, TLSPacket } from '../types'
 import { CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, PACKET_TYPE } from './constants'
-import { parseWrappedRecord } from './wrapped-record'
 import { areUint8ArraysEqual, concatenateUint8Arrays, uint8ArrayToDataView } from './generics'
+import { parseWrappedRecord } from './wrapped-record'
 
 type PacketType = keyof typeof PACKET_TYPE
 

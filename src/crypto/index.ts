@@ -1,6 +1,6 @@
-import { webcrypto } from "crypto";
-import { AsymmetricCryptoAlgorithm, Crypto } from "../types/crypto";
-import { concatenateUint8Arrays, strToUint8Array } from "../utils/generics";
+import { webcrypto } from 'crypto'
+import { AsymmetricCryptoAlgorithm, Crypto } from '../types/crypto'
+import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics'
 
 const subtle = webcrypto.subtle
 
@@ -53,6 +53,7 @@ export const crypto = {
 					raw
 				])
 			}
+
 			break
 		case 'X25519':
 			subtleArgs = { name: 'X25519' }
@@ -65,6 +66,7 @@ export const crypto = {
 					raw
 				])
 			}
+
 			break
 		case 'RSA-PSS-SHA256':
 			keyType = 'spki'
@@ -140,7 +142,7 @@ export const crypto = {
 		}
 	},
 	async calculateSharedSecret(alg, privateKey, publicKey) {
-		let genKeyName = alg === 'X25519'
+		const genKeyName = alg === 'X25519'
 			? 'X25519'
 			: 'ECDH'
 		const key = await subtle.deriveBits(
@@ -202,21 +204,21 @@ export const crypto = {
 	async verify(alg, { data, signature, publicKey }) {
 		let verifyArgs: Parameters<typeof subtle.verify>[0]
 		switch (alg) {
-			case 'RSA-PSS-SHA256':
-				verifyArgs = {
-					name: 'RSA-PSS',
-					saltLength: 32
-				}
-				break
-			case 'ECDSA-SECP256R1-SHA256':
-				signature = convertASN1toRS(signature)
-				verifyArgs = {
-					name: 'ECDSA',
-					hash: 'SHA-256',
-				}
-				break
-			default:
-				throw new Error(`Unsupported algorithm ${alg}`)
+		case 'RSA-PSS-SHA256':
+			verifyArgs = {
+				name: 'RSA-PSS',
+				saltLength: 32
+			}
+			break
+		case 'ECDSA-SECP256R1-SHA256':
+			signature = convertASN1toRS(signature)
+			verifyArgs = {
+				name: 'ECDSA',
+				hash: 'SHA-256',
+			}
+			break
+		default:
+			throw new Error(`Unsupported algorithm ${alg}`)
 		}
 
 		return subtle.verify(
@@ -247,7 +249,7 @@ export const crypto = {
 		if(!salt.length) {
 			salt = new Uint8Array(hashLength)
 		}
-		
+
 		const key = await this.importKey(alg, salt)
 		return this.hmac(alg, key, ikm)
 	},

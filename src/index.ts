@@ -1,13 +1,12 @@
 import EventEmitter from 'events'
-import { KeyPair, ProcessPacket, TLSClientOptions, TLSEventEmitter, TLSHandshakeOptions, TLSSessionTicket, X509Certificate } from './types'
-import { computeSharedKeys, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
-import { concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
-import LOGGER from './utils/logger'
-import { makeQueue } from './utils/make-queue'
 import { packClientHello } from './utils/client-hello'
 import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_KEY_TYPE_MAP, SUPPORTED_KEY_TYPES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
+import { computeSharedKeys, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
 import { packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
+import { concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
 import { packKeyUpdateRecord } from './utils/key-update'
+import LOGGER from './utils/logger'
+import { makeQueue } from './utils/make-queue'
 import { makeMessageProcessor, PacketOptions, packPacketHeader, packWithLength, readWithLength } from './utils/packets'
 import { parseTlsAlert } from './utils/parse-alert'
 import { parseCertificates, parseServerCertificateVerify, verifyCertificateChain, verifyCertificateSignature } from './utils/parse-certificate'
@@ -15,6 +14,7 @@ import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
 import { crypto } from './crypto'
+import { KeyPair, ProcessPacket, TLSClientOptions, TLSEventEmitter, TLSHandshakeOptions, TLSSessionTicket, X509Certificate } from './types'
 
 const RECORD_LENGTH_BYTES = 3
 
@@ -155,7 +155,7 @@ export function makeTLSClient({
 					cipherSuite = hello.cipherSuite
 					keyType = hello.publicKeyType
 
-					const { 
+					const {
 						keyPair,
 						algorithm
 					} = await getKeyPair(keyType)
@@ -222,8 +222,8 @@ export function makeTLSClient({
 					keys = {
 						...keys!,
 						serverSecret: newMasterSecret,
-						serverEncKey: newKeys!.encKey,
-						serverIv: newKeys!.iv,
+						serverEncKey: newKeys.encKey,
+						serverIv: newKeys.iv,
 					}
 
 					recordRecvCount = 0
@@ -543,8 +543,8 @@ export function makeTLSClient({
 			keys = {
 				...keys!,
 				clientSecret: newMasterSecret,
-				clientEncKey: newKeys!.encKey,
-				clientIv: newKeys!.iv,
+				clientEncKey: newKeys.encKey,
+				clientIv: newKeys.iv,
 			}
 
 			recordSendCount = 0

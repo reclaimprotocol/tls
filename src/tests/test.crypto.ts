@@ -1,14 +1,13 @@
+import { crypto } from '../crypto'
+import { TLSPresharedKey } from '../types'
 import { computeBinderSuffix, packPresharedKeyExtension } from '../utils/client-hello'
-import { SUPPORTED_SIGNATURE_ALGS_MAP } from '../utils/constants'
+import { computeSharedKeys } from '../utils/decryption-utils'
+import { bufferFromHexStringWithWhitespace, toHexStringWithWhitespace } from '../utils/generics'
 import { expectReadWithLength } from '../utils/packets'
 import { verifyCertificateChain, verifyCertificateSignature } from '../utils/parse-certificate'
 import { getPskFromTicket, parseSessionTicket } from '../utils/session-ticket'
-import { TLSPresharedKey } from '../types'
 import { loadX509FromPem } from '../utils/x509'
-import { computeSharedKeys } from '../utils/decryption-utils'
-import { bufferFromHexStringWithWhitespace, toHexStringWithWhitespace } from '../utils/generics'
 import { expectBuffsEq } from './utils'
-import { crypto } from '../crypto'
 
 const curve = 'X25519'
 

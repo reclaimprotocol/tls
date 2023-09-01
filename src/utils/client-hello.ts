@@ -1,9 +1,9 @@
+import { crypto } from '../crypto'
 import { Key, TLSPresharedKey } from '../types'
 import { getHash } from '../utils/decryption-utils'
 import { COMPRESSION_MODE, CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_KEY_TYPE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
-import { packWith3ByteLength, packWithLength } from './packets'
 import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
-import { crypto } from '../crypto'
+import { packWith3ByteLength, packWithLength } from './packets'
 
 type SupportedKeyType = keyof typeof SUPPORTED_KEY_TYPE_MAP
 

@@ -52,8 +52,8 @@ function setCryptoIfRequired() {
 	if(!setCrypto) {
 		// const envType = detectEnvironment()
 		// if(envType === 'node') {
-			const { webcrypto } = require('crypto')
-			peculiar.cryptoProvider.set(webcrypto)
+		const { webcrypto } = require('crypto')
+		peculiar.cryptoProvider.set(webcrypto)
 		// }
 
 		setCrypto = true

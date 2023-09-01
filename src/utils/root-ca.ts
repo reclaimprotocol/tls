@@ -1,6 +1,6 @@
 import { X509Certificate } from '../types'
-import { loadX509FromPem } from './x509'
 import logger from './logger'
+import { loadX509FromPem } from './x509'
 
 /**
  * Mozilla Root CA List

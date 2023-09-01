@@ -1,6 +1,6 @@
-import { makeMessageProcessor } from '../utils/packets'
 import { TLSPacket } from '../types'
 import logger from '../utils/logger'
+import { makeMessageProcessor } from '../utils/packets'
 import { expectBuffsEq } from './utils'
 
 describe('TLS Message Processor', () => {
