@@ -1,5 +1,4 @@
-import { getWebCrypto } from '../utils/x509'
-import { concatenateUint8Arrays } from './generics'
+import type { SignatureAlgorithm } from '../types'
 
 // TLS 1.2 -- used in header of all messages
 export const LEGACY_PROTOCOL_VERSION = new Uint8Array([ 0x03, 0x03 ])
@@ -111,119 +110,25 @@ type SignatureAlgType = 'RSA_PSS_RSAE_SHA256'
 
 type SupportedSignatureAlg = {
 	identifier: Uint8Array
-	verify(data: Uint8Array, signature: Uint8Array, publicKey: Uint8Array): boolean | Promise<boolean>
+	algorithm: SignatureAlgorithm
 }
 
 export const SUPPORTED_SIGNATURE_ALGS_MAP: { [K in SignatureAlgType]: SupportedSignatureAlg } = {
 	RSA_PSS_RSAE_SHA256: {
 		identifier: new Uint8Array([ 0x08, 0x04 ]),
-		async verify(data, signature, publicKey) {
-			const { subtle } = getWebCrypto()
-			const pubKey = await subtle.importKey(
-				'spki',
-				publicKey,
-				{
-					name: 'RSA-PSS',
-					hash: 'SHA-256'
-				},
-				true,
-				['verify']
-			)
-
-			const result = await subtle.verify(
-				{
-					name: 'RSA-PSS',
-					saltLength: 32
-				},
-				pubKey,
-				signature,
-				data,
-			)
-
-			return result
-		},
+		algorithm: 'RSA-PSS-SHA256',
 	},
 	ECDSA_SECP256R1_SHA256: {
 		identifier: new Uint8Array([ 0x04, 0x03 ]),
-		async verify(data, signature, publicKey) {
-			const { subtle } = getWebCrypto()
-			const pubKey = await subtle.importKey(
-				'spki',
-				publicKey,
-				{
-					name: 'ECDSA',
-					namedCurve: 'P-256',
-				},
-				true,
-				['verify']
-			)
-
-			const sig2 = convertASN1toRS(signature)
-
-			const result = await subtle.verify(
-				{
-					name: 'ECDSA',
-					hash: 'SHA-256',
-				},
-				pubKey,
-				sig2,
-				data,
-			)
-
-			return result
-
-			// mostly from ChatGPT
-			function convertASN1toRS(signatureBytes: Uint8Array) {
-				// Check if the signature is in the expected ASN.1 format (SEQUENCE)
-				if(signatureBytes[0] !== 0x30) {
-					throw new Error('Invalid ASN.1 signature format.')
-				}
-
-				// Get the lengths of the r and s components
-				const rLength = signatureBytes[3]
-				const sLength = signatureBytes[5 + rLength]
-
-				// Extract the r and s components from the signature
-				const rStart = 4
-				const rEnd = rStart + rLength
-				const sStart = rEnd + 2
-				const sEnd = sStart + sLength
-
-				// Create separate r and s arrays
-				let r = signatureBytes.slice(rStart, rEnd)
-				let s = signatureBytes.slice(sStart, sEnd)
-				r = cleanBigNum(r)
-				s = cleanBigNum(s)
-
-				return concatenateUint8Arrays([ r, s ])
-			}
-
-			function cleanBigNum(bn: Uint8Array) {
-				// Trim leading zeros
-				if(bn[0] === 0x00) {
-					return bn.slice(1)
-				}
-
-				bn = concatenateUint8Arrays([
-					new Uint8Array(32 - bn.length).fill(0),
-					bn
-				])
-
-				return bn
-			}
-		}
+		algorithm: 'ECDSA-SECP256R1-SHA256'
 	},
 	ED25519: {
 		identifier: new Uint8Array([ 0x08, 0x07 ]),
-		verify() {
-			throw new Error('Not implemented')
-		}
+		algorithm: 'ED25519'
 	},
 	RSA_PKCS1_SHA512: {
 		identifier: new Uint8Array([ 0x06, 0x01 ]),
-		verify() {
-			throw new Error('Not implemented')
-		}
+		algorithm: 'RSA-PKCS1-SHA512'
 	},
 }
 

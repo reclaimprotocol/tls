@@ -7,6 +7,10 @@ export type SymmetricCryptoAlgorithm = 'AES-256-GCM'
 export type AsymmetricCryptoAlgorithm = 'RSA'
 	| 'X25519'
 	| 'P-256'
+export type SignatureAlgorithm = 'RSA-PSS-SHA256'
+	| 'ECDSA-SECP256R1-SHA256'
+	| 'ED25519'
+	| 'RSA-PKCS1-SHA512'
 
 export type HashAlgorithm = 'SHA-256' | 'SHA-384'
 type CryptoAlgorithm = SymmetricCryptoAlgorithm
@@ -40,6 +44,7 @@ export type CurveImplementation = {
 export type Crypto = {
 	importKey(alg: CryptoAlgorithm, raw: Uint8Array): Awaitable<Key>
 	importKey(alg: HashAlgorithm, raw: Uint8Array): Awaitable<Key>
+	importKey(alg: SignatureAlgorithm, raw: Uint8Array, type: 'public'): Awaitable<Key>
 	importKey(alg: AsymmetricCryptoAlgorithm, raw: Uint8Array, type: 'private' | 'public'): Awaitable<Key>
 	exportKey(key: Key): Awaitable<Uint8Array>
 
@@ -56,7 +61,7 @@ export type Crypto = {
 		opts: AuthenticatedCryptOptions
 	): Awaitable<{ plaintext: Uint8Array }>
 	verify(
-		alg: AsymmetricCryptoAlgorithm,
+		alg: SignatureAlgorithm,
 		opts: VerifyOptions
 	): Awaitable<boolean>
 

@@ -5,6 +5,7 @@ import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATU
 import { expectReadWithLength } from './packets'
 import { ROOT_CAS } from './root-ca'
 import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
+import { crypto } from '../crypto'
 
 type VerifySignatureOptions = {
 	signature: Uint8Array
@@ -95,9 +96,18 @@ export async function verifyCertificateSignature({
 	hellos,
 	cipherSuite
 }: VerifySignatureOptions) {
-	const { verify } = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm]
+	const { algorithm: cryptoAlg } = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm]
+	const pubKey = await crypto.importKey(
+		cryptoAlg,
+		publicKey,
+		'public'
+	)
 	const data = await getSignatureData()
-	const verified = await verify(data, signature, publicKey)
+	const verified = await crypto.verify(cryptoAlg, {
+		data,
+		signature,
+		publicKey: pubKey
+	})
 
 	if(!verified) {
 		throw new Error(`${algorithm} signature verification failed`)

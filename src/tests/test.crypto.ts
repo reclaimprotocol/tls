@@ -381,17 +381,31 @@ JCqVJUzKoZHm1Lesh3Sz8W2jmdv51b2EQJ8HmA==
 	})
 
 	it('should verify ECDSA certificate signature', async() => {
-		const result = await SUPPORTED_SIGNATURE_ALGS_MAP['ECDSA_SECP256R1_SHA256'].verify(
-			Buffer.from('ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFRMUyAxLjMsIHNlcnZlciBDZXJ0aWZpY2F0ZVZlcmlmeQC5foSrDb7/5Mm22rnkpcsJhk6Vab3ac3oaDzC7OBJkRQ==', 'base64'),
-			Buffer.from('MEMCHwTtod6IPxR0cbg+ilX/whVTMRTlYJtdsdV8HU/PcFkCIEoSjIw7WkUVTqTQVOHx7F8ZX51A0x87o0C9iMUBt292', 'base64'),
-			Buffer.from('MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdKiaa4DZW9iBPmRsSA82paZ2rmAsjw/Z2XCzJP8TxPNAP4oeMVQV6M/LwQifIvgIgDB5WVwG9dyjExySuR517A==', 'base64')
+		const result = await crypto.verify(
+			'ECDSA-SECP256R1-SHA256',
+			{
+				data: Buffer.from('ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFRMUyAxLjMsIHNlcnZlciBDZXJ0aWZpY2F0ZVZlcmlmeQC5foSrDb7/5Mm22rnkpcsJhk6Vab3ac3oaDzC7OBJkRQ==', 'base64'),
+				signature: Buffer.from('MEMCHwTtod6IPxR0cbg+ilX/whVTMRTlYJtdsdV8HU/PcFkCIEoSjIw7WkUVTqTQVOHx7F8ZX51A0x87o0C9iMUBt292', 'base64'),
+				publicKey: await crypto.importKey(
+					'ECDSA-SECP256R1-SHA256',
+					Buffer.from('MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdKiaa4DZW9iBPmRsSA82paZ2rmAsjw/Z2XCzJP8TxPNAP4oeMVQV6M/LwQifIvgIgDB5WVwG9dyjExySuR517A==', 'base64'),
+					'public'
+				)
+			}
 		)
 		expect(result).toBe(true)
 
-		const result2 = await SUPPORTED_SIGNATURE_ALGS_MAP['ECDSA_SECP256R1_SHA256'].verify(
-			Buffer.from('ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFRMUyAxLjMsIHNlcnZlciBDZXJ0aWZpY2F0ZVZlcmlmeQDu1MWPkhDhVy7Z0rZyYhBUJ2kmgoMHXHUybDNsHNhzeg==', 'base64'),
-			Buffer.from('MEUCIGY4ojr/wPhpFU8ez8CL6RmT3Hx3Ge/UCdpw6SfnjmNJAiEA1e6rj9nKva8jnlSGWt6/I7lKjbK5uzvw/N9xFHW9jrM=', 'base64'),
-			Buffer.from('MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOLb2tA+FNKI4Klr5hE8x0yEHekfhJhxkj2nvjlrQYEhtRodEupmk/GRBOYQd7VpU8W/Yv6UbderjQlidaTtGxg==', 'base64')
+		const result2 = await crypto.verify(
+			'ECDSA-SECP256R1-SHA256',
+			{
+				data: Buffer.from('ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFRMUyAxLjMsIHNlcnZlciBDZXJ0aWZpY2F0ZVZlcmlmeQDu1MWPkhDhVy7Z0rZyYhBUJ2kmgoMHXHUybDNsHNhzeg==', 'base64'),
+				signature: Buffer.from('MEUCIGY4ojr/wPhpFU8ez8CL6RmT3Hx3Ge/UCdpw6SfnjmNJAiEA1e6rj9nKva8jnlSGWt6/I7lKjbK5uzvw/N9xFHW9jrM=', 'base64'),
+				publicKey: await crypto.importKey(
+					'ECDSA-SECP256R1-SHA256',
+					Buffer.from('MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOLb2tA+FNKI4Klr5hE8x0yEHekfhJhxkj2nvjlrQYEhtRodEupmk/GRBOYQd7VpU8W/Yv6UbderjQlidaTtGxg==', 'base64'),
+					'public'
+				)
+			}
 		)
 		expect(result2).toBe(true)
 	})
