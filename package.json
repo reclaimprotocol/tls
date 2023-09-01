@@ -1,7 +1,7 @@
 {
 	"name": "@reclaimprotocol/tls",
 	"version": "1.0.0",
-	"description": "WebCrypto Based Cross Platform TLS1.3",
+	"description": "WebCrypto Based Cross Platform TLS",
 	"main": "lib/index",
 	"scripts": {
 		"build": "npm exec tsc",
@@ -12,6 +12,9 @@
 	"keywords": [],
 	"author": "Adhiraj Singh",
 	"license": "ISC",
+	"files": [
+		"lib/**"
+	],
 	"dependencies": {
 		"@peculiar/x509": "^1.9.5",
 		"@stablelib/chacha20poly1305": "^1.0.1"

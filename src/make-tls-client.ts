@@ -466,6 +466,9 @@ export function makeTLSClient({
 
 			return keyPairs[keyType]
 		},
+		/**
+		 * Get the current traffic keys
+		 */
 		getKeys() {
 			if(!keys) {
 				return undefined
@@ -473,6 +476,9 @@ export function makeTLSClient({
 
 			return { ...keys, recordSendCount, recordRecvCount }
 		},
+		/**
+		 * Session ID used to connect to the server
+		 */
 		getSessionId() {
 			return sessionId
 		},
@@ -486,6 +492,9 @@ export function makeTLSClient({
 				cipherSuite: cipherSuite!,
 			})
 		},
+		/**
+		 * Start the handshake with the server
+		 */
 		async startHandshake(opts?: TLSHandshakeOptions) {
 			if(handshakeDone) {
 				throw new Error('Handshake already done')
@@ -522,9 +531,24 @@ export function makeTLSClient({
 				data: clientHello,
 			})
 		},
-		handleRawData(data: Uint8Array) {
+		/**
+		 * Handle bytes received from the server.
+		 * Could be a complete or partial TLS packet
+		 */
+		handleReceivedBytes(data: Uint8Array) {
 			processor.onData(data, processPacket)
 		},
+		/**
+		 * Handle a complete TLS packet received
+		 * from the server
+		 */
+		handleReceivedPacket: processPacket,
+		/**
+		 * Utilise the KeyUpdate handshake message to update
+		 * the traffic keys. Available only in TLS 1.3
+		 * @param requestUpdateFromServer should the server be requested to
+		 * update its keys as well
+		 */
 		async updateTrafficKeys(requestUpdateFromServer = false) {
 			const packet = packKeyUpdateRecord(
 				requestUpdateFromServer
@@ -553,7 +577,6 @@ export function makeTLSClient({
 
 			logger.info('updated client traffic keys')
 		},
-		processPacket,
 		write(data: Uint8Array) {
 			if(!handshakeDone) {
 				throw new Error('Handshake not done')

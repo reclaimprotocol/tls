@@ -177,7 +177,7 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 			...opts,
 		})
 
-		socket.on('data', tls.handleRawData)
+		socket.on('data', tls.handleReceivedBytes)
 
 		socket.on('connect', () => tls.startHandshake({ psk }))
 

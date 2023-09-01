@@ -32,6 +32,7 @@ export type TLSConnectionOptions = {
 }
 
 export type TLSClientOptions = TLSConnectionOptions & {
+	/** the hostname of the server to connect to */
 	host: string
 	/**
 	 * should it expect the last bytes of a wrapped-record
