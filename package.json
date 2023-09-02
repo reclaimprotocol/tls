@@ -7,7 +7,8 @@
 		"build": "npm exec tsc",
 		"test": "jest",
 		"lint": "eslint . --ext .js,.ts,.jsx,.tsx",
-		"lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx"
+		"lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx",
+		"prepare": "npm run build"
 	},
 	"keywords": [],
 	"author": "Adhiraj Singh",
