@@ -50,3 +50,12 @@ export function uint8ArrayToDataView(arr: Uint8Array) {
 export function strToUint8Array(str: string) {
 	return new TextEncoder().encode(str)
 }
+
+export function generateIV(iv: Uint8Array, recordNumber: number) {
+	// make the recordNumber a buffer, so we can XOR with the main IV
+	// to generate the specific IV to decrypt this packet
+	const recordBuffer = new Uint8Array(iv.length)
+	const recordBufferView = new DataView(recordBuffer.buffer)
+	recordBufferView.setUint32(iv.length - 4, recordNumber)
+	return xor(iv, recordBuffer)
+}

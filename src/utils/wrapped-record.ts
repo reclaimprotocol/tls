@@ -1,7 +1,7 @@
 import { crypto } from '../crypto'
 import { Key } from '../types'
 import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { concatenateUint8Arrays, xor } from './generics'
+import { concatenateUint8Arrays, generateIV } from './generics'
 
 type WrappedRecordCipherOptions = {
 	authTag?: Uint8Array
@@ -80,13 +80,4 @@ export function parseWrappedRecord(data: Uint8Array) {
 	const authTag = data.slice(data.length - AUTH_TAG_BYTE_LENGTH)
 
 	return { encryptedData, authTag }
-}
-
-export function generateIV(iv: Uint8Array, recordNumber: number) {
-	// make the recordNumber a buffer, so we can XOR with the main IV
-	// to generate the specific IV to decrypt this packet
-	const recordBuffer = new Uint8Array(iv.length)
-	const recordBufferView = new DataView(recordBuffer.buffer)
-	recordBufferView.setUint32(iv.length - 4, recordNumber)
-	return xor(iv, recordBuffer)
 }
