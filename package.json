@@ -13,7 +13,7 @@
 	"author": "Adhiraj Singh",
 	"license": "ISC",
 	"files": [
-		"lib/**"
+		"lib/*"
 	],
 	"dependencies": {
 		"@peculiar/x509": "^1.9.5",
