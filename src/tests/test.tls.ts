@@ -44,7 +44,10 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 	})
 
 	it('should send & recv data from the server', async() => {
-		const { tls, socket } = connectTLS()
+		const onRecvData = jest.fn()
+		const { tls, socket } = connectTLS({
+			onRecvData
+		})
 
 		while(!tls.isHandshakeDone()) {
 			await delay(100)
@@ -54,8 +57,8 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 		tls.write(data)
 
 		const recvData = await new Promise<Uint8Array>(resolve => {
-			tls.ev.on('data', data => {
-				resolve(data.plaintext)
+			onRecvData.mockImplementationOnce((plaintext) => {
+				resolve(plaintext)
 			})
 		})
 
@@ -65,12 +68,14 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 	})
 
 	it('should recv a session ticket', async() => {
-		const { tls, socket } = connectTLS()
-
+		const onSessionTicket = jest.fn()
+		const { socket } = connectTLS({
+			onSessionTicket
+		})
 		const recvTicket = await new Promise<TLSSessionTicket>(resolve => {
-			tls.ev.on('session-ticket', data => {
-				resolve(data)
-			})
+			onSessionTicket.mockImplementationOnce(
+				(ticket) => resolve(ticket)
+			)
 		})
 		expect(recvTicket.ticket).toBeDefined()
 		expect(recvTicket.expiresAt).toBeDefined()
@@ -80,7 +85,8 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 
 	it('should resume a session with ticket', async() => {
 		const psk = await getPsk()
-		const { tls, socket } = connectTLS({}, psk)
+		const onRecvData = jest.fn()
+		const { tls, socket } = connectTLS({ onRecvData }, psk)
 
 		while(!tls.isHandshakeDone()) {
 			await delay(100)
@@ -94,8 +100,8 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 		tls.write(data)
 
 		const recvData = await new Promise<Uint8Array>(resolve => {
-			tls.ev.on('data', data => {
-				resolve(data.plaintext)
+			onRecvData.mockImplementationOnce((plaintext) => {
+				resolve(plaintext)
 			})
 		})
 
@@ -104,10 +110,11 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 		socket.end()
 
 		async function getPsk() {
-			const { tls, socket } = connectTLS()
+			const onSessionTicket = jest.fn()
+			const { tls, socket } = connectTLS({ onSessionTicket })
 			const sessionTicket = await new Promise<TLSSessionTicket>(resolve => {
-				tls.ev.on('session-ticket', data => {
-					resolve(data)
+				onSessionTicket.mockImplementationOnce(ticket => {
+					resolve(ticket)
 				})
 			})
 
@@ -124,7 +131,8 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 	})
 
 	it('should update traffic keys', async() => {
-		const { tls, socket } = connectTLS()
+		const onRecvData = jest.fn()
+		const { tls, socket } = connectTLS({ onRecvData })
 
 		while(!tls.isHandshakeDone()) {
 			await delay(100)
@@ -138,8 +146,8 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 		await tls.write(data)
 
 		const recvData = await new Promise<Uint8Array>(resolve => {
-			tls.ev.on('data', data => {
-				resolve(data.plaintext)
+			onRecvData.mockImplementationOnce((plaintext) => {
+				resolve(plaintext)
 			})
 		})
 

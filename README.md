@@ -66,29 +66,24 @@ const tlsClient = makeTlsClient({
 			socket.write(authTag)
 		}
 	},
+	// handle any received data
+	onRecvData(plaintext) {
+		console.log('received data: ', plaintext)
+	},
+	onHandshake() {
+		console.log('handshake completed successfully')
+		// write encrypted data to the socket
+		tls.write('hello world')
+	},
+	onTlsEnd(error) {
+		console.error('TLS connect ended: ', error)
+	}
 })
 
 socket.on('data', tls.handleReceivedBytes)
 
 // start handshake as soon as the socket connects
 socket.on('connect', () => tls.startHandshake({ psk }))
-
-// some error occurred
-tls.ev.on('end', ({ error }) => {
-	console.error('TLS connect ended: ', error)
-})
-
-// handshake completed successfully
-tls.ev.on('handshake', () => {
-	console.log('handshake completed successfully')
-	// write encrypted data to the socket
-	tls.write('hello world')
-})
-
-// handle any received data
-tls.ev.on('data', ({ plaintext }) => {
-	console.log('received data: ', plaintext)
-})
 
 // use the TCP socket to connect to the server
 socket.connect({ host, port })
@@ -98,21 +93,28 @@ socket.connect({ host, port })
 
 Handle a Session Ticket & Resume Session with a PSK
 ``` ts
-tls.ev.on('session-ticket', ({ ticket }) => {
-	// get a PSK (pre-shared key) from the session ticket
-	const psk = tls.getPskFromTicket(ticket)
-	// this can be used to resume a session
-	// if disconnected, using
-	// tls.startHandshake({ psk })
+const tlsClient = makeTlsClient({
+	// ... other options
+	onSessionTicket(ticket) {
+		// get a PSK (pre-shared key) from the session ticket
+		const psk = tls.getPskFromTicket(ticket)
+		// this can be used to resume a session
+		// if disconnected, using
+		// tls.startHandshake({ psk })
+	}
 })
 ```
 
 Handle received certificates
 ``` ts
-// handle received certificates
-// (if you want to for some reason)
-tls.ev.on('recv-certificates', ({ certificates }) => {
-	// do something I guess?
+const tlsClient = makeTlsClient({
+	// ... other options
+
+	// handle received certificates
+	// (if you want to for some reason)
+	onRecvCertificates({ certificates }) {
+		// do something I guess?
+	}
 })
 ```
 

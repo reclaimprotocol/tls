@@ -31,7 +31,7 @@ export type TLSConnectionOptions = {
 	namedCurves?: (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
 }
 
-export type TLSClientOptions = TLSConnectionOptions & {
+export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {
 	/** the hostname of the server to connect to */
 	host: string
 	/**
@@ -68,24 +68,15 @@ export type TLSHandshakeOptions = {
 	psk?: TLSPresharedKey
 }
 
-export type TLSEventMap = {
-	handshake: undefined
-	'recv-certificates': { certificates: X509Certificate[] }
-	data: {
-		plaintext: Uint8Array
+export type TLSEventHandlers = {
+	onHandshake?(): void
+	onRecvCertificates?(obj: { certificates: X509Certificate[] }): void
+	onRecvData?(plaintext: Uint8Array, ctx: {
 		ciphertext: Uint8Array
 		authTag: Uint8Array
-	}
-	end: { error?: Error }
-	'session-ticket': TLSSessionTicket
-}
-
-export interface TLSEventEmitter {
-	on<T extends keyof TLSEventMap>(event: T, listener: (arg: TLSEventMap[T]) => void): void
-	once<T extends keyof TLSEventMap>(event: T, listener: (arg: TLSEventMap[T]) => void): void
-    off<T extends keyof TLSEventMap>(event: T, listener: (arg: TLSEventMap[T]) => void): void
-    removeAllListeners<T extends keyof TLSEventMap>(event: T): void
-	emit<T extends keyof TLSEventMap>(event: T, arg: TLSEventMap[T]): boolean
+	}): void
+	onTlsEnd?(error?: Error): void
+	onSessionTicket?(ticket: TLSSessionTicket): void
 }
 
 export type ProcessPacket = (type: number, packet: TLSPacket) => void

@@ -1,4 +1,3 @@
-import EventEmitter from 'events'
 import { packClientHello } from './utils/client-hello'
 import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
 import { computeSharedKeys, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
@@ -14,7 +13,7 @@ import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
 import { crypto } from './crypto'
-import { KeyPair, ProcessPacket, TLSClientOptions, TLSEventEmitter, TLSHandshakeOptions, TLSSessionTicket, X509Certificate } from './types'
+import { KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSSessionTicket, X509Certificate } from './types'
 
 const RECORD_LENGTH_BYTES = 3
 
@@ -32,13 +31,17 @@ export function makeTLSClient({
 	logger: _logger,
 	cipherSuites,
 	namedCurves,
-	write
+	write,
+	onRecvData,
+	onSessionTicket,
+	onTlsEnd,
+	onHandshake,
+	onRecvCertificates
 }: TLSClientOptions) {
 	verifyServerCertificate = verifyServerCertificate !== false
 	namedCurves = namedCurves || SUPPORTED_NAMED_CURVES
 
 	const logger = _logger || LOGGER
-	const ev = new EventEmitter() as TLSEventEmitter
 	const processor = makeMessageProcessor(logger)
 	const { enqueue: enqueueServerPacket } = makeQueue()
 
@@ -188,7 +191,7 @@ export function makeTLSClient({
 					const result = parseCertificates(content)
 					certificates = result.certificates
 
-					ev.emit('recv-certificates', { certificates })
+					onRecvCertificates?.({ certificates })
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.CERTIFICATE_VERIFY:
 					logger.debug({ len: content.length }, 'received certificate verify')
@@ -234,7 +237,7 @@ export function makeTLSClient({
 				case SUPPORTED_RECORD_TYPE_MAP.SESSION_TICKET:
 					logger.debug({ len: record.length }, 'received session ticket')
 					const ticket = parseSessionTicket(content)
-					ev.emit('session-ticket', ticket)
+					onSessionTicket?.(ticket)
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.CERTIFICATE_REQUEST:
 					logger.debug('received client certificate request')
@@ -271,11 +274,7 @@ export function makeTLSClient({
 			}
 		} else if(contentType === CONTENT_TYPE_MAP.APPLICATION_DATA) {
 			logger.trace({ len: record.length }, 'received application data')
-			ev.emit('data', {
-				plaintext: record,
-				authTag: authTag!,
-				ciphertext: ciphertext!,
-			})
+			onRecvData?.(record, { authTag: authTag!, ciphertext: ciphertext!, })
 		} else if(contentType === CONTENT_TYPE_MAP.ALERT) {
 			await handleAlert(record)
 		} else {
@@ -385,7 +384,7 @@ export function makeTLSClient({
 		recordRecvCount = 0
 
 		handshakeDone = true
-		ev.emit('handshake', undefined)
+		onHandshake?.()
 	}
 
 	async function writeEncryptedPacket(opts: PacketOptions & { contentType: keyof typeof CONTENT_TYPE_MAP }) {
@@ -433,7 +432,7 @@ export function makeTLSClient({
 		processor.reset()
 
 		ended = true
-		ev.emit('end', { error })
+		onTlsEnd?.(error)
 	}
 
 	async function getKeyPair(keyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP) {
@@ -449,7 +448,6 @@ export function makeTLSClient({
 	}
 
 	return {
-		ev,
 		getMetadata() {
 			return {
 				cipherSuite,
