@@ -14,9 +14,14 @@ const P384_PRIVATE_KEY_DER_PREFIX = new Uint8Array([
 	0x30, 0x81, 0xb6, 0x02, 0x01, 0x00, 0x30, 0x10, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22, 0x04, 0x81, 0x9e, 0x30, 0x81, 0x9b, 0x02, 0x01, 0x01, 0x04, 0x30
 ])
 
+const P256_PRIVATE_KEY_DER_PREFIX = new Uint8Array([
+	0x30, 0x81, 0xb6, 0x02, 0x01, 0x00, 0x30, 0x10, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22, 0x04, 0x81, 0x9e, 0x30, 0x81, 0x9b, 0x02, 0x01, 0x01, 0x04, 0x30
+])
+
 const SHARED_KEY_LEN_MAP: { [T in AsymmetricCryptoAlgorithm]: number } = {
 	'X25519': 32,
 	'P-384': 48,
+	'P-256': 32,
 }
 
 const AUTH_TAG_BYTE_LENGTH = 16
@@ -48,16 +53,21 @@ export const crypto: Crypto = {
 			keyUsages = ['sign', 'verify']
 			break
 		case 'P-384':
+		case 'P-256':
 			subtleArgs = {
 				name: 'ECDH',
-				namedCurve: 'P-384',
+				namedCurve: alg,
 			}
 			keyUsages = []
 			if(args[0] === 'private') {
 				keyUsages = ['deriveBits']
 				keyType = 'pkcs8'
+
+				const prefix = alg === 'P-256'
+					? P256_PRIVATE_KEY_DER_PREFIX
+					: P384_PRIVATE_KEY_DER_PREFIX
 				raw = concatenateUint8Arrays([
-					P384_PRIVATE_KEY_DER_PREFIX,
+					prefix,
 					raw
 				])
 			}
@@ -135,10 +145,11 @@ export const crypto: Crypto = {
 		let genKeyArgs: Parameters<typeof subtle.generateKey>[0]
 		switch (alg) {
 		case 'P-384':
+		case 'P-256':
 			genKeyArgs = {
 				name: 'ECDH',
 				// @ts-ignore
-				namedCurve: 'P-384',
+				namedCurve: alg,
 			}
 			break
 		case 'X25519':

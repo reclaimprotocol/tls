@@ -6,6 +6,10 @@ export const CURRENT_PROTOCOL_VERSION = new Uint8Array([ 0x03, 0x04 ])
 export const COMPRESSION_MODE = new Uint8Array([ 0x01, 0x00 ])
 
 export const SUPPORTED_NAMED_CURVE_MAP = {
+	SECP256R1: {
+		identifier: new Uint8Array([ 0x00, 0x17 ]),
+		algorithm: 'P-256'
+	} as const,
 	SECP384R1: {
 		identifier: new Uint8Array([ 0x00, 0x18 ]),
 		algorithm: 'P-384'

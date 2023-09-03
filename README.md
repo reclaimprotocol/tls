@@ -15,7 +15,8 @@ As all the cryptography is handled by webcrypto -- running on React native requi
 - TLS 1.3
 
 ### Curves
-- X25519
+- X25519 (only on NodeJs -- not supported in the browser)
+- P-256 (SECP256R1)
 - P-384 (SECP384R1)
 
 ### Signature Algorithms
@@ -26,6 +27,10 @@ As all the cryptography is handled by webcrypto -- running on React native requi
 - AES-128-GCM-SHA256
 - AES-256-GCM-SHA384
 - CHACHA20-POLY1305-SHA256
+
+### Certificates
+- The entire Mozilla CA store is supported
+- A few additional certificates have also been added. See `src/utils/root-ca.ts`
 
 ## Install
 

@@ -5,8 +5,8 @@ export type SymmetricCryptoAlgorithm = 'AES-256-GCM'
 	| 'AES-128-GCM'
 	| 'CHACHA20-POLY1305'
 export type AsymmetricCryptoAlgorithm = 'X25519'
-	// SECP384R1 is the same as P-384
-	| 'P-384'
+	| 'P-256' // SECP256R1
+	| 'P-384' // SECP384R1
 export type SignatureAlgorithm = 'RSA-PSS-SHA256'
 	| 'ECDSA-SECP256R1-SHA256'
 	| 'ED25519'
