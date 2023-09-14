@@ -3686,13 +3686,4 @@ ROOT_CA_LIST.push(...ADDITIONAL_ROOT_CA_LIST)
  * Reclaim root CA store
  */
 export const ROOT_CAS = ROOT_CA_LIST
-	.map((ca) => {
-		try {
-			return loadX509FromPem(ca)
-		} catch(err) {
-			console.error({ ca }, `Failed to load root CA: ${err.message}`)
-			throw new Error(`Failed to load root CA: ${err.message}`)
-			// console.log(i, err)
-			// swallow
-		}
-	})
+	.map(loadX509FromPem)
