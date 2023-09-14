@@ -11,7 +11,7 @@ export function toHexStringWithWhitespace(buff: Uint8Array, whitespace = ' ') {
 export function xor(a: Uint8Array, b: Uint8Array) {
 	const result = new Uint8Array(a.length)
 	for(let i = 0; i < a.length; i++) {
-		result[i] = a.at(i)! ^ b.at(i)!
+		result[i] = a[i]! ^ b[i]!
 	}
 
 	return result

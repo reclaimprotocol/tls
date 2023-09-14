@@ -20,7 +20,7 @@ const CERT_VERIFY_TXT = strToUint8Array('TLS 1.3, server CertificateVerify')
 
 export function parseCertificates(data: Uint8Array) {
 	// context, kina irrelevant
-	const ctx = read(1).at(0)!
+	const ctx = read(1)[0]
 	// the data itself
 	data = readWLength(3)
 
