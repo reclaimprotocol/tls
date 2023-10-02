@@ -1,11 +1,12 @@
 import { crypto } from '../crypto'
 import { TLSPresharedKey } from '../types'
 import { computeBinderSuffix, packPresharedKeyExtension } from '../utils/client-hello'
-import { computeSharedKeys } from '../utils/decryption-utils'
+import { computeSharedKeys, computeSharedKeysTls12 } from '../utils/decryption-utils'
 import { toHexStringWithWhitespace } from '../utils/generics'
 import { expectReadWithLength } from '../utils/packets'
-import { verifyCertificateChain, verifyCertificateSignature } from '../utils/parse-certificate'
+import { getSignatureDataTls13, verifyCertificateChain, verifyCertificateSignature } from '../utils/parse-certificate'
 import { getPskFromTicket, parseSessionTicket } from '../utils/session-ticket'
+import { encryptWrappedRecord } from '../utils/wrapped-record'
 import { loadX509FromPem } from '../utils/x509'
 import { bufferFromHexStringWithWhitespace, expectBuffsEq } from './utils'
 
@@ -55,6 +56,78 @@ describe('Crypto Tests', () => {
 		)
 		expect(toHexStringWithWhitespace(result.serverIv, '')).toEqual(
 			'151187a208b0f49ba2a81084'
+		)
+	})
+
+	// from: https://tls12.xargs.org
+	it('should correctly compute handshake keys TLS1.2', async() => {
+		const preMasterSecret = bufferFromHexStringWithWhitespace(
+			'df4a291baa1eb7cfa6934b29b474baad2697e29f1f920dcc77c8a0a088447624'
+		)
+
+		const result = await computeSharedKeysTls12({
+			preMasterSecret,
+			clientRandom: bufferFromHexStringWithWhitespace(
+				'00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f'
+			),
+			serverRandom: bufferFromHexStringWithWhitespace(
+				'70 71 72 73 74 75 76 77 78 79 7a 7b 7c 7d 7e 7f 80 81 82 83 84 85 86 87 88 89 8a 8b 8c 8d 8e 8f'
+			),
+			cipherSuite: 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
+		})
+
+		const clientEncKey = await crypto.exportKey(result.clientEncKey)
+		const serverEncKey = await crypto.exportKey(result.serverEncKey)
+		const clientMacKey = await crypto.exportKey(result.clientMacKey)
+		expect(
+			toHexStringWithWhitespace(result.masterSecret, '')
+		).toEqual(
+			'916abf9da55973e13614ae0a3f5d3f37b023ba129aee02cc9134338127cd7049781c8e19fc1eb2a7387ac06ae237344c'
+		)
+		expect(toHexStringWithWhitespace(clientEncKey, '')).toEqual(
+			'f656d037b173ef3e11169f27231a84b6'
+		)
+		expect(toHexStringWithWhitespace(serverEncKey, '')).toEqual(
+			'752a18e7a9fcb7cbcdd8f98dd8f769eb'
+		)
+		expect(toHexStringWithWhitespace(clientMacKey, '')).toEqual(
+			'1b7d117c7d5f690bc263cae8ef60af0f1878acc2'
+		)
+	})
+
+	it('should encrypt data TLS1.2', async() => {
+		const { ciphertext } = await encryptWrappedRecord(
+			{
+				plaintext: bufferFromHexStringWithWhitespace(
+					'14 00 00 0c cf 91 96 26 f1 36 0c 53 6a aa d7 3a'
+				),
+				recordHeaderOpts: { type: 'HELLO', }
+			},
+			{
+				key: await crypto.importKey(
+					'AES-128-CBC',
+					bufferFromHexStringWithWhitespace(
+						'f656d037b173ef3e11169f27231a84b6'
+					)
+				),
+				macKey: await crypto.importKey(
+					'SHA-1',
+					bufferFromHexStringWithWhitespace(
+						'1b7d117c7d5f690bc263cae8ef60af0f1878acc2'
+					)
+				),
+				iv: bufferFromHexStringWithWhitespace(
+					'40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f'
+				),
+				recordNumber: 0,
+				cipherSuite: 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
+			}
+		)
+
+		expect(
+			toHexStringWithWhitespace(ciphertext)
+		).toEqual(
+			'40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 22 7b c9 ba 81 ef 30 f2 a8 a7 8f f1 df 50 84 4d 58 04 b7 ee b2 e2 14 c3 2b 68 92 ac a3 db 7b 78 07 7f dd 90 06 7c 51 6b ac b3 ba 90 de df 72 0f'
 		)
 	})
 
@@ -358,6 +431,17 @@ JCqVJUzKoZHm1Lesh3Sz8W2jmdv51b2EQJ8HmA==
 	})
 
 	it('should verify RSA PSS certificate signature', async() => {
+		const signatureData = await getSignatureDataTls13(
+			[
+				'AQAAtAMDaiLWbRflcm3mBnM7qsSX6wOtsq4Vz79ei4kqhGB6MfYgwePTomJusJJCqppiDkfnRVz71EWXKlpcXelIUbiSMmsABBMCEwEBAABnAAAAEwARAAAOYXBpLmdpdGh1Yi5jb20ACgAIAAYAHQAYABcAIwAAACsAAwIDBAANAAQAAggEAC0AAwIAAQAzACYAJAAdACCiuv5ieC3NBzopklWgG5Bd9ck/WOHsHWenjVqjsbbzCg==',
+				'AgAAdgMDX5xwfc47PuS+9tfLPR0MmhylFoIafu7zhsoIIaNdF54gwePTomJusJJCqppiDkfnRVz71EWXKlpcXelIUbiSMmsTAQAALgArAAIDBAAzACQAHQAgsl69ar/SE/WjwbCAZr08+X/SEL3DOvqXZy1c+8H4WEU=',
+				'CAAABgAEAAAAAA==',
+				'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'
+			]
+				.map(str => Buffer.from(str, 'base64')),
+			'TLS_CHACHA20_POLY1305_SHA256'
+		)
+
 		await verifyCertificateSignature({
 			signature: Buffer.from(
 				'kfFzHaE6OFbceLjis2I4orufzHZbpQiG+jkq6aa25q6NsJSfITK9zRk017+hXApM+XezMKCNbPYAmHD183w8Be3HjjiCcVg8mzrq9YoMsmZhpSF1KlBY6uSG1/GUnIeu+su/bJzX4ujGoStmAFPYk2hOiKZJe8YwMNhuPJa65GKKQ1H3bKcs5af79FmqUGMNBEyhoLnoBoHrXLPNNPtAQB+Mk/rot8fP3+BIHnrmtExT4FgQM9AbF34e91QSXIagoYMzsW423T0/E3tM4u5E4VXXcdzWFWkT23ynmLcgoWgMTijxEL9xdejF2LhMrUxioELw13WAW2syA2yPIBLj9g==',
@@ -368,14 +452,7 @@ JCqVJUzKoZHm1Lesh3Sz8W2jmdv51b2EQJ8HmA==
 				'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsjbkuJeiviTDDAWAUdWfxCGz3zWLGOj0O0eEi5DayefzZuinaGrBXyZT4KpDfz/wiw64H/PZHt2ppNWEMPt0jTs0p3DQLbXIFXLWmgb06sBVyjggTZKSReDre5Ze/KymBsrs1BTeRtkWScXfgJD99o8zqOhSGjy51Ce7nR8B77sfqGjyrvsuew93TtXao8XVBCl0jebT/tG/Qh2wkolvKlV2b9gvafvUoMkqT50cbJVD1dqZvJNukbro9wareaoeEPmEmsJaplkMzXTJDU4jYvBYmp2dHq0/BMepNtVpVFrTpLQReaI9jjZ40D25F/zBkapipf4unKsiPXff0ABPSwIDAQAB',
 				'base64'
 			),
-			cipherSuite: 'TLS_CHACHA20_POLY1305_SHA256',
-			hellos: [
-				'AQAAtAMDaiLWbRflcm3mBnM7qsSX6wOtsq4Vz79ei4kqhGB6MfYgwePTomJusJJCqppiDkfnRVz71EWXKlpcXelIUbiSMmsABBMCEwEBAABnAAAAEwARAAAOYXBpLmdpdGh1Yi5jb20ACgAIAAYAHQAYABcAIwAAACsAAwIDBAANAAQAAggEAC0AAwIAAQAzACYAJAAdACCiuv5ieC3NBzopklWgG5Bd9ck/WOHsHWenjVqjsbbzCg==',
-				'AgAAdgMDX5xwfc47PuS+9tfLPR0MmhylFoIafu7zhsoIIaNdF54gwePTomJusJJCqppiDkfnRVz71EWXKlpcXelIUbiSMmsTAQAALgArAAIDBAAzACQAHQAgsl69ar/SE/WjwbCAZr08+X/SEL3DOvqXZy1c+8H4WEU=',
-				'CAAABgAEAAAAAA==',
-				'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'
-			]
-				.map(str => Buffer.from(str, 'base64'))
+			signatureData,
 		})
 	})
 

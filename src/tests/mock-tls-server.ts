@@ -11,7 +11,6 @@ export function createMockTLSServer(
 	const options: TlsOptions = {
 		key: readFileSync('./cert/private-key.pem'),
 		cert: readFileSync('./cert/public-cert.pem'),
-		minVersion: 'TLSv1.3',
 		...tlsOpts
 	}
 

@@ -1,19 +1,20 @@
 import { packClientHello } from './utils/client-hello'
-import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
-import { computeSharedKeys, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
-import { packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
-import { concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
+import { CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
+import { computeSharedKeys, computeSharedKeysTls12, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
+import { generateFinishTls12, packClientFinishTls12, packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
+import { areUint8ArraysEqual, concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
+import { packClientKeyShare, processServerKeyShare } from './utils/key-share'
 import { packKeyUpdateRecord } from './utils/key-update'
 import { logger as LOGGER } from './utils/logger'
 import { makeQueue } from './utils/make-queue'
 import { makeMessageProcessor, PacketOptions, packPacketHeader, packWithLength, readWithLength } from './utils/packets'
 import { parseTlsAlert } from './utils/parse-alert'
-import { parseCertificates, parseServerCertificateVerify, verifyCertificateChain, verifyCertificateSignature } from './utils/parse-certificate'
+import { getSignatureDataTls12, getSignatureDataTls13, parseCertificates, parseServerCertificateVerify, verifyCertificateChain, verifyCertificateSignature } from './utils/parse-certificate'
 import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
 import { crypto } from './crypto'
-import { KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSSessionTicket, X509Certificate } from './types'
+import { Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
 
 const RECORD_LENGTH_BYTES = 3
 
@@ -31,6 +32,7 @@ export function makeTLSClient({
 	logger: _logger,
 	cipherSuites,
 	namedCurves,
+	supportedProtocolVersions,
 	write,
 	onRecvData,
 	onSessionTicket,
@@ -56,6 +58,10 @@ export function makeTLSClient({
 	let recordSendCount = 0
 	let recordRecvCount = 0
 	let keyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP | undefined = undefined
+	let connTlsVersion: TLSProtocolVersion | undefined = undefined
+	let clientRandom: Uint8Array | undefined = undefined
+	let serverRandom: Uint8Array | undefined = undefined
+	let cipherSpecChanged = false
 
 	let certificates: X509Certificate[] = []
 	let handshakePacketStream = new Uint8Array()
@@ -71,10 +77,10 @@ export function makeTLSClient({
 			let data = content
 			let contentType: number | undefined
 			let ciphertext: Uint8Array | undefined
-			switch (type) {
-			case PACKET_TYPE.HELLO:
-				break
-			case PACKET_TYPE.WRAPPED_RECORD:
+			// if the cipher spec has changed,
+			// the data will be encrypted, so
+			// we need to decrypt the packet
+			if(cipherSpecChanged || type === PACKET_TYPE.WRAPPED_RECORD) {
 				logger.trace('recv wrapped record')
 				const decrypted = await decryptWrappedRecord(
 					content,
@@ -85,32 +91,35 @@ export function makeTLSClient({
 						recordHeader: header,
 						recordNumber: recordRecvCount,
 						cipherSuite: cipherSuite!,
+						macKey: 'serverMacKey' in keys!
+							? keys.serverMacKey
+							: undefined,
 					}
 				)
 				data = decrypted.plaintext
-				// exclude final byte (content type)
-				ciphertext = content.slice(0, -1)
-				contentType = decrypted.contentType
+				ciphertext = decrypted.ciphertext
+				contentType = decrypted.contentType || type
 
 				logger.debug(
 					{
 						recordRecvCount,
-						contentType: contentType.toString(16),
+						contentType: contentType?.toString(16),
 						length: data.length,
 					},
 					'decrypted wrapped record'
 				)
 				recordRecvCount += 1
-				break
-			case PACKET_TYPE.CHANGE_CIPHER_SPEC:
-				// TLS 1.3 doesn't really have a change cipher spec
-				// this is just for compatibility with TLS 1.2
-				// so we do nothing here, and return
+			} else if(type === PACKET_TYPE.CHANGE_CIPHER_SPEC) {
+				logger.debug('received change cipher spec')
+				cipherSpecChanged = true
+
 				return
-			case PACKET_TYPE.ALERT:
+			} else if(type === PACKET_TYPE.ALERT) {
 				await handleAlert(content)
 				return
-			default:
+			} else if(type === PACKET_TYPE.HELLO) {
+				// do nothing
+			} else {
 				logger.warn(
 					{
 						type: type.toString(16),
@@ -158,37 +167,28 @@ export function makeTLSClient({
 					}
 
 					cipherSuite = hello.cipherSuite
-					keyType = hello.publicKeyType
-
-					const {
-						keyPair,
-						algorithm
-					} = await getKeyPair(keyType)
-					const masterSecret = await crypto.calculateSharedSecret(
-						algorithm,
-						keyPair.privKey,
-						hello.publicKey
-					)
-
-					keys = await computeSharedKeys({
-						hellos: handshakeMsgs,
-						cipherSuite: hello.cipherSuite,
-						secretType: 'hs',
-						masterSecret,
-						earlySecret,
-					})
+					connTlsVersion = hello.serverTlsVersion
+					serverRandom = hello.serverRandom
 
 					logger.debug(
-						{ cipherSuite, keyType },
-						'processed server hello & computed shared keys'
+						{ cipherSuite, connTlsVersion },
+						'processed server hello'
 					)
+
+					if(hello.publicKeyType && hello.publicKey) {
+						await processServerPubKey({
+							publicKeyType: hello.publicKeyType,
+							publicKey: hello.publicKey
+						})
+					}
+
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.ENCRYPTED_EXTENSIONS:
 					logger.debug({ len: content.length }, 'received encrypted extensions')
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.CERTIFICATE:
 					logger.debug({ len: content.length }, 'received certificate')
-					const result = parseCertificates(content)
+					const result = parseCertificates(content, { version: connTlsVersion! })
 					certificates = result.certificates
 
 					onRecvCertificates?.({ certificates })
@@ -203,11 +203,14 @@ export function makeTLSClient({
 						throw new Error('No certificates received')
 					}
 
+					const signatureData = await getSignatureDataTls13(
+						handshakeMsgs.slice(0, -1),
+						cipherSuite!
+					)
 					await verifyCertificateSignature({
 						...signature,
 						publicKey: certificates[0].getPublicKey(),
-						hellos: handshakeMsgs.slice(0, -1),
-						cipherSuite: cipherSuite!
+						signatureData,
 					})
 
 					if(verifyServerCertificate) {
@@ -235,13 +238,73 @@ export function makeTLSClient({
 					logger.debug('updated server traffic keys')
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.SESSION_TICKET:
-					logger.debug({ len: record.length }, 'received session ticket')
-					const ticket = parseSessionTicket(content)
-					onSessionTicket?.(ticket)
+					if(connTlsVersion === 'TLS1_3') {
+						logger.debug({ len: record.length }, 'received session ticket')
+						const ticket = parseSessionTicket(content)
+						onSessionTicket?.(ticket)
+					} else {
+						logger.warn('ignoring received session ticket in TLS 1.2')
+					}
+
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.CERTIFICATE_REQUEST:
 					logger.debug('received client certificate request')
 					clientCertificateRequested = true
+					break
+				case SUPPORTED_RECORD_TYPE_MAP.SERVER_KEY_SHARE:
+					logger.trace('received server key share')
+					// extract pub key & signature of pub key with cert
+					const keyShare = await processServerKeyShare(content)
+					// compute signature data
+					const signatureData12 = await getSignatureDataTls12(
+						{
+							clientRandom: clientRandom!,
+							serverRandom: serverRandom!,
+							curveType: keyShare.publicKeyType,
+							publicKey: keyShare.publicKey,
+						},
+					)
+					// verify signature
+					await verifyCertificateSignature({
+						signature: keyShare.signatureBytes,
+						algorithm: keyShare.signatureAlgorithm,
+						publicKey: certificates[0].getPublicKey(),
+						signatureData: signatureData12,
+					})
+
+					// compute shared keys
+					await processServerPubKey(keyShare)
+
+					break
+				case SUPPORTED_RECORD_TYPE_MAP.SERVER_HELLO_DONE:
+					logger.debug('server hello done')
+					if(!keyType) {
+						throw new Error('Key exchange without key-share not supported')
+					}
+
+					const clientPubKey = keyPairs[keyType]!.pubKey
+					const clientKeyShare = await packClientKeyShare(clientPubKey)
+					await writePacket({
+						type: 'HELLO',
+						data: clientKeyShare
+					})
+
+					handshakeMsgs.push(clientKeyShare)
+
+					await writeChangeCipherSpec()
+
+					const finishMsg = await packClientFinishTls12({
+						secret: keys!.masterSecret,
+						handshakeMessages: handshakeMsgs,
+						cipherSuite: cipherSuite!,
+					})
+					await writeEncryptedPacket({
+						data: finishMsg,
+						type: 'HELLO',
+					})
+
+					handshakeMsgs.push(finishMsg)
+
 					break
 				default:
 					logger.warn({ type: type.toString(16) }, 'cannot process record')
@@ -290,7 +353,7 @@ export function makeTLSClient({
 
 		const msg = (
 			description === 'HANDSHAKE_FAILURE' || description === 'PROTOCOL_VERSION'
-				? 'Unsupported TLS version. Only TLS 1.3 websites with EC certificates are supported'
+				? 'Unsupported TLS version'
 				: 'received alert'
 		)
 
@@ -332,7 +395,30 @@ export function makeTLSClient({
 	async function processServerFinish(serverFinish: Uint8Array) {
 		logger.debug('received server finish')
 
-		//derive server keys now to streamline handshake messages handling
+		if(connTlsVersion === 'TLS1_2') {
+			await processServerFinishTls12(serverFinish)
+		} else {
+			await processServerFinishTls13(serverFinish)
+		}
+
+		handshakeDone = true
+		onHandshake?.()
+	}
+
+	async function processServerFinishTls12(serverFinish: Uint8Array) {
+		const genServerFinish = await generateFinishTls12('server', {
+			handshakeMessages: handshakeMsgs.slice(0, -1),
+			secret: keys!.masterSecret,
+			cipherSuite: cipherSuite!,
+		})
+		if(!areUint8ArraysEqual(genServerFinish, serverFinish)) {
+			throw new Error('Server finish does not match')
+		}
+	}
+
+	async function processServerFinishTls13(serverFinish: Uint8Array) {
+
+		// derive server keys now to streamline handshake messages handling
 		const serverKeys = await computeSharedKeys({
 			// we only use handshake messages till the server finish
 			hellos: handshakeMsgs,
@@ -345,7 +431,7 @@ export function makeTLSClient({
 		// the server finish, so we need to exclude it
 		const handshakeMsgsForServerHash = handshakeMsgs.slice(0, -1)
 
-		verifyFinishMessage(serverFinish, {
+		await verifyFinishMessage(serverFinish, {
 			secret: keys!.serverSecret,
 			handshakeMessages: handshakeMsgsForServerHash,
 			cipherSuite: cipherSuite!
@@ -382,34 +468,89 @@ export function makeTLSClient({
 		// once we switch to the provider keys
 		recordSendCount = 0
 		recordRecvCount = 0
-
-		handshakeDone = true
-		onHandshake?.()
 	}
 
-	async function writeEncryptedPacket(opts: PacketOptions & { contentType: keyof typeof CONTENT_TYPE_MAP }) {
+	async function writeEncryptedPacket(
+		opts: PacketOptions & { contentType?: keyof typeof CONTENT_TYPE_MAP }
+	) {
 		logger.trace(
 			{ ...opts, data: toHexStringWithWhitespace(opts.data) },
 			'writing enc packet'
 		)
-		// total length = data len + 1 byte for record type + auth tag len
-		const dataLen = opts.data.length + 1 + AUTH_TAG_BYTE_LENGTH
-		const header = packPacketHeader(dataLen, opts)
 
-		const { ciphertext, authTag } = await encryptWrappedRecord(
-			{ plaintext: opts.data, contentType: opts.contentType },
+		const {
+			ciphertext,
+			authTag,
+		} = await encryptWrappedRecord(
+			{
+				plaintext: opts.data,
+				contentType: opts.contentType,
+			},
 			{
 				key: keys!.clientEncKey,
 				iv: keys!.clientIv,
-				recordHeader: header,
 				recordNumber: recordSendCount,
 				cipherSuite: cipherSuite!,
+				macKey: 'clientMacKey' in keys!
+					? keys.clientMacKey
+					: undefined,
+				recordHeaderOpts: opts,
 			}
 		)
 
 		recordSendCount += 1
 
-		await write({ header, content: ciphertext, authTag })
+		const header = packPacketHeader(ciphertext.length, opts)
+
+		await write({
+			header,
+			content: ciphertext,
+			authTag
+		})
+	}
+
+	async function processServerPubKey(data: {
+		publicKeyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP
+		publicKey: Key
+	}) {
+		keyType = data.publicKeyType
+		const {
+			keyPair,
+			algorithm
+		} = await getKeyPair(data.publicKeyType)
+		const sharedSecret = await crypto.calculateSharedSecret(
+			algorithm,
+			keyPair.privKey,
+			data.publicKey
+		)
+
+		if(connTlsVersion === 'TLS1_2') {
+			keys = await computeSharedKeysTls12({
+				preMasterSecret: sharedSecret,
+				clientRandom: clientRandom!,
+				serverRandom: serverRandom!,
+				cipherSuite: cipherSuite!,
+			})
+		} else {
+			keys = await computeSharedKeys({
+				hellos: handshakeMsgs,
+				cipherSuite: cipherSuite!,
+				secretType: 'hs',
+				masterSecret: sharedSecret,
+				earlySecret,
+			})
+		}
+
+		logger.debug({ keyType }, 'computed shared keys')
+	}
+
+	async function writeChangeCipherSpec() {
+		logger.debug('sending change cipher spec')
+		const changeCipherSpecData = new Uint8Array([ 1 ])
+		await writePacket({
+			type: 'CHANGE_CIPHER_SPEC',
+			data: changeCipherSpecData
+		})
 	}
 
 	async function writePacket(opts: PacketOptions) {
@@ -429,6 +570,10 @@ export function makeTLSClient({
 		recordSendCount = 0
 		recordRecvCount = 0
 		earlySecret = undefined
+		cipherSuite = undefined
+		keyType = undefined
+		clientRandom = undefined
+		serverRandom = undefined
 		processor.reset()
 
 		ended = true
@@ -452,6 +597,7 @@ export function makeTLSClient({
 			return {
 				cipherSuite,
 				keyType,
+				version: connTlsVersion
 			}
 		},
 		hasEnded() {
@@ -501,6 +647,8 @@ export function makeTLSClient({
 			sessionId = crypto.randomBytes(32)
 			ended = false
 
+			clientRandom = opts?.random || crypto.randomBytes(32)
+
 			const clientHello = await packClientHello({
 				host,
 				keysToShare: await Promise.all(
@@ -513,10 +661,11 @@ export function makeTLSClient({
 							}
 						})
 				),
-				random: opts?.random || crypto.randomBytes(32),
+				random: clientRandom,
 				sessionId,
 				psk: opts?.psk,
-				cipherSuites
+				cipherSuites,
+				supportedProtocolVersions
 			})
 			handshakeMsgs.push(clientHello)
 

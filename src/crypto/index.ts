@@ -40,10 +40,18 @@ export const crypto: Crypto = {
 			}
 			keyUsages = ['encrypt', 'decrypt']
 			break
+		case 'AES-128-CBC':
+			subtleArgs = {
+				name: 'AES-CBC',
+				length: 128
+			}
+			keyUsages = ['encrypt', 'decrypt']
+			break
 		case 'CHACHA20-POLY1305':
 			// chaCha20 is not supported by webcrypto
 			// so we "fake" create a key
 			return raw as unknown as Key
+		case 'SHA-1':
 		case 'SHA-256':
 		case 'SHA-384':
 			subtleArgs = {
@@ -187,6 +195,30 @@ export const crypto: Crypto = {
 		const buffer = new Uint8Array(length)
 		return webcrypto.getRandomValues(buffer)
 	},
+	async encrypt(cipherSuite, { iv, data, key }) {
+		const name = cipherSuite === 'AES-128-CBC'
+			? 'AES-CBC'
+			: ''
+		return toUint8Array(
+			await subtle.encrypt(
+				{ name, iv },
+				key,
+				data,
+			)
+		)
+	},
+	async decrypt(cipherSuite, opts) {
+		const name = cipherSuite === 'AES-128-CBC'
+			? 'AES-CBC'
+			: ''
+		return toUint8Array(
+			await subtle.decrypt(
+				{ name, iv: opts.iv },
+				opts.key,
+				opts.data,
+			)
+		)
+	},
 	async authenticatedEncrypt(cipherSuite, { iv, aead, key, data }) {
 		let ciphertext: Uint8Array
 		if(cipherSuite === 'CHACHA20-POLY1305') {
@@ -211,8 +243,10 @@ export const crypto: Crypto = {
 		}
 
 		return {
-			ciphertext: ciphertext.slice(0, -AUTH_TAG_BYTE_LENGTH),
-			authTag: ciphertext.slice(-AUTH_TAG_BYTE_LENGTH),
+			ciphertext: ciphertext
+				.slice(0, -AUTH_TAG_BYTE_LENGTH),
+			authTag: ciphertext
+				.slice(-AUTH_TAG_BYTE_LENGTH),
 		}
 	},
 	async authenticatedDecrypt(cipherSuite, { iv, aead, key, data, authTag }) {

@@ -1,44 +1,44 @@
 import { crypto } from '../crypto'
-import type { CertificatePublicKey, X509Certificate } from '../types'
+import type { CertificatePublicKey, Key, TLSProcessContext, X509Certificate } from '../types'
 import { loadX509FromDer } from '../utils/x509'
-import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
+import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
 import { getHash } from './decryption-utils'
 import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
-import { expectReadWithLength } from './packets'
+import { expectReadWithLength, packWithLength } from './packets'
 import { ROOT_CAS } from './root-ca'
 
 type VerifySignatureOptions = {
 	signature: Uint8Array
 	algorithm: keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP
 	publicKey: CertificatePublicKey
-	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
-
-	hellos: Uint8Array[] | Uint8Array
+	signatureData: Uint8Array
 }
 
 const CERT_VERIFY_TXT = strToUint8Array('TLS 1.3, server CertificateVerify')
 
-export function parseCertificates(data: Uint8Array) {
+export function parseCertificates(
+	data: Uint8Array,
+	{ version }: TLSProcessContext
+) {
 	// context, kina irrelevant
-	const ctx = read(1)[0]
+	const ctx = version === 'TLS1_3' ? read(1)[0] : 0
 	// the data itself
 	data = readWLength(3)
 
 	const certificates: X509Certificate[] = []
-	while(data.length > 0) {
+	while(data.length) {
 		// the certificate data
 		const cert = readWLength(3)
 		const certObj = loadX509FromDer(cert)
 
 		certificates.push(certObj)
-		// extensions
-		readWLength(2)
+		if(version === 'TLS1_3') {
+			// extensions
+			readWLength(2)
+		}
 	}
 
-	return {
-		certificates,
-		ctx
-	}
+	return { certificates, ctx }
 
 	function read(bytes: number) {
 		const result = data.slice(0, bytes)
@@ -93,8 +93,7 @@ export async function verifyCertificateSignature({
 	signature,
 	algorithm,
 	publicKey,
-	hellos,
-	cipherSuite
+	signatureData,
 }: VerifySignatureOptions) {
 	const { algorithm: cryptoAlg } = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm]
 	const pubKey = await crypto.importKey(
@@ -102,9 +101,8 @@ export async function verifyCertificateSignature({
 		publicKey,
 		'public'
 	)
-	const data = await getSignatureData()
 	const verified = await crypto.verify(cryptoAlg, {
-		data,
+		data: signatureData,
 		signature,
 		publicKey: pubKey
 	})
@@ -112,18 +110,51 @@ export async function verifyCertificateSignature({
 	if(!verified) {
 		throw new Error(`${algorithm} signature verification failed`)
 	}
+}
 
-	async function getSignatureData() {
-		const handshakeHash = await getHash(hellos, cipherSuite)
-		const content = concatenateUint8Arrays([
-			new Uint8Array(64).fill(0x20),
-			CERT_VERIFY_TXT,
-			new Uint8Array([0]),
-			handshakeHash
-		])
+export async function getSignatureDataTls13(
+	hellos: Uint8Array[] | Uint8Array,
+	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+) {
+	const handshakeHash = await getHash(hellos, cipherSuite)
+	const content = concatenateUint8Arrays([
+		new Uint8Array(64).fill(0x20),
+		CERT_VERIFY_TXT,
+		new Uint8Array([0]),
+		handshakeHash
+	])
 
-		return content
-	}
+	return content
+}
+
+type Tls12SignatureDataOpts = {
+	clientRandom: Uint8Array
+	serverRandom: Uint8Array
+	curveType: keyof typeof SUPPORTED_NAMED_CURVE_MAP
+	publicKey: Key
+}
+
+export async function getSignatureDataTls12(
+	{
+		clientRandom,
+		serverRandom,
+		curveType,
+		publicKey,
+	}: Tls12SignatureDataOpts,
+) {
+	const publicKeyBytes = await crypto.exportKey(publicKey)
+	const msgs = concatenateUint8Arrays([
+		clientRandom,
+		serverRandom,
+		concatenateUint8Arrays([
+			new Uint8Array([3]),
+			SUPPORTED_NAMED_CURVE_MAP[curveType].identifier,
+		]),
+		packWithLength(publicKeyBytes)
+			// pub key is packed with 1 byte length
+			.slice(1)
+	])
+	return msgs
 }
 
 export async function verifyCertificateChain(

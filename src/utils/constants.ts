@@ -1,9 +1,7 @@
-// TLS 1.2 -- used in header of all messages
-export const LEGACY_PROTOCOL_VERSION = new Uint8Array([ 0x03, 0x03 ])
-// TLS 1.3
-export const CURRENT_PROTOCOL_VERSION = new Uint8Array([ 0x03, 0x04 ])
-// no compression, as TLS 1.3 does not support it
-export const COMPRESSION_MODE = new Uint8Array([ 0x01, 0x00 ])
+export const TLS_PROTOCOL_VERSION_MAP = {
+	'TLS1_3': new Uint8Array([ 0x03, 0x04 ]),
+	'TLS1_2': new Uint8Array([ 0x03, 0x03 ]),
+}
 
 export const SUPPORTED_NAMED_CURVE_MAP = {
 	SECP256R1: {
@@ -26,8 +24,11 @@ export const SUPPORTED_RECORD_TYPE_MAP = {
 	SESSION_TICKET: 0x04,
 	ENCRYPTED_EXTENSIONS: 0x08,
 	CERTIFICATE: 0x0b,
+	SERVER_KEY_SHARE: 0x0c,
 	CERTIFICATE_REQUEST: 0x0d,
+	SERVER_HELLO_DONE: 0x0e,
 	CERTIFICATE_VERIFY: 0x0f,
+	CLIENT_KEY_SHARE: 0x10,
 	FINISHED: 0x14,
 	KEY_UPDATE: 0x18
 }
@@ -45,7 +46,8 @@ export const AUTH_TAG_BYTE_LENGTH = 16
 export const SUPPORTED_NAMED_CURVES = Object.keys(SUPPORTED_NAMED_CURVE_MAP) as (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
 
 export const SUPPORTED_CIPHER_SUITE_MAP = {
-	TLS_CHACHA20_POLY1305_SHA256:{
+	// TLS 1.3 --------------------
+	TLS_CHACHA20_POLY1305_SHA256: {
 		identifier: new Uint8Array([0x13, 0x03]),
 		keyLength: 32,
 		hashLength: 32,
@@ -65,6 +67,14 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 		hashLength: 32,
 		hashAlgorithm: 'SHA-256',
 		cipher: 'AES-128-GCM',
+	},
+	// TLS 1.2 -------------------
+	TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA: {
+		identifier: new Uint8Array([ 0xc0, 0x13 ]),
+		keyLength: 16,
+		hashLength: 20,
+		hashAlgorithm: 'SHA-1',
+		cipher: 'AES-128-CBC',
 	},
 } as const
 
