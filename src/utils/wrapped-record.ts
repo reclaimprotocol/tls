@@ -123,7 +123,7 @@ export async function decryptWrappedRecord(
 
 		return {
 			plaintext: plaintext.slice(0, totalLength),
-			contentType: plaintext.slice(totalLength, totalLength)[0],
+			contentType: plaintext.slice(totalLength, totalLength + 1)[0],
 			ciphertext: encryptedData.slice(0, totalLength),
 		}
 	}
