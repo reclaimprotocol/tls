@@ -1,7 +1,6 @@
-import { Logger, ProcessPacket, TLSPacket, TLSProtocolVersion } from '../types'
+import { Logger, ProcessPacket, TLSProtocolVersion } from '../types'
 import { PACKET_TYPE, TLS_PROTOCOL_VERSION_MAP } from './constants'
 import { concatenateUint8Arrays, uint8ArrayToDataView } from './generics'
-import { parseWrappedRecord } from './wrapped-record'
 
 type PacketType = keyof typeof PACKET_TYPE
 
@@ -158,17 +157,10 @@ export function makeMessageProcessor(logger: Logger) {
 				const body = buffer.slice(0, bytesLeft)
 
 				logger.trace({ type: currentMessageType }, 'got complete packet')
-				const parsedPacket: TLSPacket = {
+				onChunk(currentMessageType, {
 					header: currentMessageHeader!,
 					content: body
-				}
-				if(currentMessageType === PACKET_TYPE.WRAPPED_RECORD) {
-					const { encryptedData, authTag } = parseWrappedRecord(body)
-					parsedPacket.content = encryptedData
-					parsedPacket.authTag = authTag
-				}
-
-				onChunk(currentMessageType, parsedPacket)
+				})
 
 				currentMessageType = undefined
 

@@ -12,7 +12,6 @@ type WrappedRecordMacGenOptions = {
 } & ({ recordHeaderOpts: PacketHeaderOptions } | { recordHeader: Uint8Array })
 
 type WrappedRecordCipherOptions = {
-	authTag?: Uint8Array
 	iv: Uint8Array
 	key: Key
 } & WrappedRecordMacGenOptions
@@ -33,7 +32,6 @@ export async function decryptWrappedRecord(
 	}
 
 	const {
-		authTag,
 		key,
 		recordNumber,
 		cipherSuite,
@@ -45,10 +43,7 @@ export async function decryptWrappedRecord(
 
 	async function doCipherDecrypt(cipher: SymmetricCryptoAlgorithm) {
 		const iv = encryptedData.slice(0, 16)
-		let ciphertext = encryptedData.slice(16)
-		if(authTag?.length) {
-			ciphertext = concatenateUint8Arrays([ ciphertext, authTag ])
-		}
+		const ciphertext = encryptedData.slice(16)
 
 		let plaintextAndMac = await crypto.decrypt(
 			cipher,
@@ -99,6 +94,10 @@ export async function decryptWrappedRecord(
 		) {
 			iv = generateIV(iv, recordNumber)
 		}
+
+
+		const authTag = encryptedData.slice(-AUTH_TAG_BYTE_LENGTH)
+		encryptedData = encryptedData.slice(0, -AUTH_TAG_BYTE_LENGTH)
 
 		const aead = getAead(encryptedData.length, opts)
 		const { plaintext } = await crypto.authenticatedDecrypt(
@@ -195,7 +194,12 @@ export async function encryptWrappedRecord(
 			])
 		}
 
-		return enc
+		return {
+			ciphertext: concatenateUint8Arrays([
+				enc.ciphertext,
+				enc.authTag,
+			])
+		}
 	}
 
 	async function doSymmetricEncrypt(cipher: SymmetricCryptoAlgorithm) {
@@ -220,7 +224,6 @@ export async function encryptWrappedRecord(
 				iv,
 				result
 			]),
-			authTag: undefined
 		}
 	}
 
@@ -229,13 +232,6 @@ export async function encryptWrappedRecord(
 		returnVal.set(arr, len - arr.length)
 		return returnVal
 	}
-}
-
-export function parseWrappedRecord(data: Uint8Array) {
-	const encryptedData = data.slice(0, data.length - AUTH_TAG_BYTE_LENGTH)
-	const authTag = data.slice(data.length - AUTH_TAG_BYTE_LENGTH)
-
-	return { encryptedData, authTag }
 }
 
 function getAead(

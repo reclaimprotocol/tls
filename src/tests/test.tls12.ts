@@ -106,12 +106,9 @@ describe('TLS 1.2 Tests', () => {
 			verifyServerCertificate: false,
 			supportedProtocolVersions: ['TLS1_2'],
 			logger,
-			async write({ header, content, authTag }) {
+			async write({ header, content }) {
 				socket.write(header)
 				socket.write(content)
-				if(authTag) {
-					socket.write(authTag)
-				}
 			},
 			...opts,
 		})

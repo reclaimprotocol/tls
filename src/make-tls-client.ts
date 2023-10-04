@@ -1,5 +1,5 @@
 import { packClientHello } from './utils/client-hello'
-import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
+import { CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
 import { computeSharedKeys, computeSharedKeysTls12, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
 import { generateFinishTls12, packClientFinishTls12, packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
 import { areUint8ArraysEqual, concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
@@ -21,7 +21,6 @@ const RECORD_LENGTH_BYTES = 3
 type Record = {
 	record: Uint8Array
 	contentType: number | undefined
-	authTag: Uint8Array | undefined
 	ciphertext: Uint8Array | undefined
 }
 
@@ -67,7 +66,7 @@ export function makeTLSClient({
 	let handshakePacketStream = new Uint8Array()
 	let clientCertificateRequested = false
 
-	const processPacket: ProcessPacket = (type, { header, content, authTag }) => {
+	const processPacket: ProcessPacket = (type, { header, content }) => {
 		return enqueueServerPacket(async() => {
 			if(ended) {
 				logger.warn('connection closed, ignoring packet')
@@ -82,15 +81,9 @@ export function makeTLSClient({
 			// we need to decrypt the packet
 			if(cipherSpecChanged || type === PACKET_TYPE.WRAPPED_RECORD) {
 				logger.trace('recv wrapped record')
-				if(type !== PACKET_TYPE.WRAPPED_RECORD && !authTag) {
-					authTag = content.slice(-AUTH_TAG_BYTE_LENGTH)
-					content = content.slice(0, -AUTH_TAG_BYTE_LENGTH)
-				}
-
 				const decrypted = await decryptWrappedRecord(
 					content,
 					{
-						authTag,
 						key: keys!.serverEncKey,
 						iv: keys!.serverIv,
 						recordHeader: header,
@@ -140,7 +133,6 @@ export function makeTLSClient({
 				await processRecord({
 					record: data,
 					contentType,
-					authTag,
 					ciphertext,
 				})
 			} catch(err) {
@@ -154,7 +146,6 @@ export function makeTLSClient({
 		{
 			record,
 			contentType,
-			authTag,
 			ciphertext
 		}: Record
 	) {
@@ -343,7 +334,7 @@ export function makeTLSClient({
 			}
 		} else if(contentType === CONTENT_TYPE_MAP.APPLICATION_DATA) {
 			logger.trace({ len: record.length }, 'received application data')
-			onRecvData?.(record, { authTag: authTag!, ciphertext: ciphertext!, })
+			onRecvData?.(record, { ciphertext: ciphertext!, })
 		} else if(contentType === CONTENT_TYPE_MAP.ALERT) {
 			await handleAlert(record)
 		} else {
@@ -484,10 +475,7 @@ export function makeTLSClient({
 			'writing enc packet'
 		)
 
-		const {
-			ciphertext,
-			authTag,
-		} = await encryptWrappedRecord(
+		const { ciphertext } = await encryptWrappedRecord(
 			{
 				plaintext: opts.data,
 				contentType: connTlsVersion === 'TLS1_3'
@@ -511,15 +499,11 @@ export function makeTLSClient({
 		)
 
 		recordSendCount += 1
-
-		const totalLength = ciphertext.length
-			+ (authTag?.length || 0)
-		const header = packPacketHeader(totalLength, opts)
+		const header = packPacketHeader(ciphertext.length, opts)
 
 		await write({
 			header,
 			content: ciphertext,
-			authTag
 		})
 	}
 

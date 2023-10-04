@@ -78,7 +78,7 @@ describe('Crypto Tests', () => {
 
 		const clientEncKey = await crypto.exportKey(result.clientEncKey)
 		const serverEncKey = await crypto.exportKey(result.serverEncKey)
-		const clientMacKey = await crypto.exportKey(result.clientMacKey)
+		const clientMacKey = await crypto.exportKey(result.clientMacKey!)
 		expect(
 			toHexStringWithWhitespace(result.masterSecret, '')
 		).toEqual(
@@ -101,7 +101,6 @@ describe('Crypto Tests', () => {
 				plaintext: bufferFromHexStringWithWhitespace(
 					'14 00 00 0c cf 91 96 26 f1 36 0c 53 6a aa d7 3a'
 				),
-				recordHeaderOpts: { type: 'HELLO', }
 			},
 			{
 				key: await crypto.importKey(
@@ -120,7 +119,9 @@ describe('Crypto Tests', () => {
 					'40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f'
 				),
 				recordNumber: 0,
-				cipherSuite: 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
+				cipherSuite: 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA',
+				recordHeaderOpts: { type: 'HELLO', },
+				version: 'TLS1_2'
 			}
 		)
 

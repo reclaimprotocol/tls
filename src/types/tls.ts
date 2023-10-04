@@ -8,7 +8,6 @@ export type TLSProtocolVersion = keyof typeof TLS_PROTOCOL_VERSION_MAP
 export type TLSPacket = {
 	header: Uint8Array
 	content: Uint8Array
-	authTag?: Uint8Array
 }
 
 export type TLSProcessContext = {
@@ -79,10 +78,7 @@ export type TLSHandshakeOptions = {
 export type TLSEventHandlers = {
 	onHandshake?(): void
 	onRecvCertificates?(obj: { certificates: X509Certificate[] }): void
-	onRecvData?(plaintext: Uint8Array, ctx: {
-		ciphertext: Uint8Array
-		authTag: Uint8Array
-	}): void
+	onRecvData?(plaintext: Uint8Array, ctx: { ciphertext: Uint8Array }): void
 	onTlsEnd?(error?: Error): void
 	onSessionTicket?(ticket: TLSSessionTicket): void
 }

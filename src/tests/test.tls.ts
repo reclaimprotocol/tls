@@ -178,12 +178,9 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 			verifyServerCertificate: false,
 			cipherSuites: [cipherSuite],
 			logger,
-			async write({ header, content, authTag }) {
+			async write({ header, content }) {
 				socket.write(header)
 				socket.write(content)
-				if(authTag) {
-					socket.write(authTag)
-				}
 			},
 			...opts,
 		})
