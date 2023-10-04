@@ -1,3 +1,6 @@
+/**
+ * Temporary solution for AES-CBC decryption
+ */
 import { createDecipheriv } from 'crypto'
 import { concatenateUint8Arrays } from '../utils/generics'
 

@@ -595,18 +595,11 @@ export function makeTLSClient({
 			return {
 				cipherSuite,
 				keyType,
-				version: connTlsVersion
+				version: connTlsVersion,
 			}
 		},
 		hasEnded() {
 			return ended
-		},
-		getKeyPair() {
-			if(!keyType) {
-				throw new Error('handshake not done yet')
-			}
-
-			return keyPairs[keyType]
 		},
 		/**
 		 * Get the current traffic keys
