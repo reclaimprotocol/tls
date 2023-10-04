@@ -21,6 +21,9 @@ export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<pecul
 
 			return i === s
 		},
+		getPublicKeyAlgorithm() {
+			return cert.publicKey.algorithm
+		},
 		getPublicKey() {
 			return new Uint8Array(cert.publicKey.rawData)
 		},

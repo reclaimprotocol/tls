@@ -58,6 +58,10 @@ export type Crypto = {
 	calculateSharedSecret(alg: AsymmetricCryptoAlgorithm, privateKey: Key, publicKey: Key): Awaitable<Uint8Array>
 
 	randomBytes(length: number): Uint8Array
+	/**
+	 * Encrypts data with the given cipher suite and options.
+	 * Expects padding has already been applied to the data.
+	 */
 	encrypt(
 		cipherSuite: SymmetricCryptoAlgorithm,
 		opts: CryptOptions

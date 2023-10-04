@@ -1,12 +1,12 @@
 import { crypto } from '../crypto'
 import { AuthenticatedSymmetricCryptoAlgorithm, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
 import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { areUint8ArraysEqual, concatenateUint8Arrays, generateIV, isSymmetricCipher, padTls, toHexStringWithWhitespace, uint8ArrayToDataView } from './generics'
+import { areUint8ArraysEqual, concatenateUint8Arrays, generateIV, isSymmetricCipher, padTls, toHexStringWithWhitespace, uint8ArrayToDataView, unpadTls } from './generics'
 import { PacketHeaderOptions, packPacketHeader } from './packets'
 
 type WrappedRecordMacGenOptions = {
 	macKey?: Key
-	recordNumber: number | undefined
+	recordNumber: number
 	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
 	version: TLSProtocolVersion
 } & ({ recordHeaderOpts: PacketHeaderOptions } | { recordHeader: Uint8Array })
@@ -21,6 +21,8 @@ type EncryptInfo = {
 	plaintext: Uint8Array
 	contentType?: keyof typeof CONTENT_TYPE_MAP
 }
+
+const AUTH_CIPHER_LENGTH = 12
 
 export async function decryptWrappedRecord(
 	encryptedData: Uint8Array,
@@ -37,10 +39,6 @@ export async function decryptWrappedRecord(
 		cipherSuite,
 	} = opts
 	const { cipher, hashLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
-	const iv = recordNumber === undefined
-		? opts.iv
-		: generateIV(opts.iv, recordNumber)
-
 	return isSymmetricCipher(cipher)
 		? doCipherDecrypt(cipher)
 		: doAuthCipherDecrypt(cipher)
@@ -61,6 +59,7 @@ export async function decryptWrappedRecord(
 			}
 		)
 
+		plaintextAndMac = unpadTls(plaintextAndMac)
 		plaintextAndMac = plaintextAndMac.slice(0, -1)
 
 		const mac = plaintextAndMac.slice(-hashLength)
@@ -79,12 +78,29 @@ export async function decryptWrappedRecord(
 	}
 
 	async function doAuthCipherDecrypt(cipher: AuthenticatedSymmetricCryptoAlgorithm) {
+		let iv = opts.iv
+		const recordIvLength = AUTH_CIPHER_LENGTH - iv.length
+		if(recordIvLength) {
+			// const recordIv = new Uint8Array(recordIvLength)
+			// const seqNumberView = uint8ArrayToDataView(recordIv)
+			// seqNumberView.setUint32(recordIvLength - 4, recordNumber)
+			const recordIv = encryptedData.slice(0, recordIvLength)
+			encryptedData = encryptedData.slice(recordIvLength)
+
+			iv = concatenateUint8Arrays([
+				iv,
+				recordIv
+			])
+		} else if(
+			// use IV generation alg for TLS 1.3
+			// and ChaCha20-Poly1305
+			opts.version === 'TLS1_3'
+				|| cipher === 'CHACHA20-POLY1305'
+		) {
+			iv = generateIV(iv, recordNumber)
+		}
+
 		const aead = getAead(encryptedData.length, opts)
-		// console.log(
-		// 	'aead', toHexStringWithWhitespace(aead),
-		// 	'cipher', toHexStringWithWhitespace(encryptedData),
-		// 	'authTag', toHexStringWithWhitespace(authTag || new Uint8Array(0)),
-		// )
 		const { plaintext } = await crypto.authenticatedDecrypt(
 			cipher,
 			{
@@ -115,10 +131,7 @@ export async function decryptWrappedRecord(
 }
 
 export async function encryptWrappedRecord(
-	{
-		plaintext,
-		contentType,
-	}: EncryptInfo,
+	{ plaintext, contentType }: EncryptInfo,
 	opts: WrappedRecordCipherOptions
 ) {
 	const {
@@ -126,11 +139,8 @@ export async function encryptWrappedRecord(
 		recordNumber,
 		cipherSuite,
 	} = opts
-	const { cipher } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
-
-	let iv = recordNumber === undefined
-		? opts.iv
-		: generateIV(opts.iv, recordNumber)
+	const { cipher, ivLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
+	let iv = opts.iv
 
 	const completePlaintext = contentType
 		? concatenateUint8Arrays([
@@ -145,22 +155,45 @@ export async function encryptWrappedRecord(
 
 	async function doAuthSymmetricEncrypt(cipher: AuthenticatedSymmetricCryptoAlgorithm) {
 		const aead = getAead(completePlaintext.length, opts)
+
+		// record IV is the record number as a 64-bit big-endian integer
+		const recordIvLength = AUTH_CIPHER_LENGTH - ivLength
+		let recordIv: Uint8Array | undefined
+		let completeIv = iv
+		if(recordIvLength) {
+			recordIv = new Uint8Array(recordIvLength)
+			const seqNumberView = uint8ArrayToDataView(recordIv)
+			seqNumberView.setUint32(recordIvLength - 4, recordNumber)
+
+			completeIv = concatenateUint8Arrays([
+				iv,
+				recordIv
+			])
+		} else if(
+			// use IV generation alg for TLS 1.3
+			// and ChaCha20-Poly1305
+			opts.version === 'TLS1_3'
+				|| cipher === 'CHACHA20-POLY1305'
+		) {
+			completeIv = generateIV(iv, recordNumber)
+		}
+
 		const enc = await crypto.authenticatedEncrypt(
 			cipher,
 			{
 				key,
-				iv,
+				iv: completeIv,
 				data: completePlaintext,
 				aead,
 			}
 		)
 
-		// if(!isTls13) {
-		// 	enc.ciphertext = concatenateUint8Arrays([
-		// 		opts.iv,
-		// 		enc.ciphertext,
-		// 	])
-		// }
+		if(recordIv) {
+			enc.ciphertext = concatenateUint8Arrays([
+				recordIv,
+				enc.ciphertext,
+			])
+		}
 
 		return enc
 	}
@@ -185,8 +218,7 @@ export async function encryptWrappedRecord(
 		return {
 			ciphertext: concatenateUint8Arrays([
 				iv,
-				// remove the extra padding webcrypto adds
-				result.slice(0, padded.length),
+				result
 			]),
 			authTag: undefined
 		}

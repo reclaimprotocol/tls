@@ -84,7 +84,7 @@ export function makeTLSClient({
 				logger.trace('recv wrapped record')
 				if(type !== PACKET_TYPE.WRAPPED_RECORD && !authTag) {
 					authTag = content.slice(-AUTH_TAG_BYTE_LENGTH)
-					content = content.slice(0, AUTH_TAG_BYTE_LENGTH)
+					content = content.slice(0, -AUTH_TAG_BYTE_LENGTH)
 				}
 
 				const decrypted = await decryptWrappedRecord(

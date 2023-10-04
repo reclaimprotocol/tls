@@ -74,9 +74,6 @@ export function padTls(data: Uint8Array, blockSize: number) {
 		? data.length + blockSize
 		: Math.ceil(data.length / blockSize) * blockSize
 	const paddingLength = nextMultiple - data.length
-	if(!paddingLength) {
-		return data
-	}
 
 	const paddingNum = paddingLength - 1
 	const padded = new Uint8Array(nextMultiple)
@@ -84,6 +81,20 @@ export function padTls(data: Uint8Array, blockSize: number) {
 	padded.fill(paddingNum, data.length)
 	padded.fill(paddingNum, nextMultiple - 1)
 	return padded
+}
+
+/**
+ * Unpad a TLS-spec padded buffer
+ */
+export function unpadTls(data: Uint8Array) {
+	const paddingLength = data[data.length - 1]
+	for(let i = 0; i < paddingLength; i++) {
+		if(data[data.length - 1 - i] !== paddingLength) {
+			throw new Error('Invalid padding')
+		}
+	}
+
+	return data.slice(0, data.length - paddingLength)
 }
 
 export function isSymmetricCipher(

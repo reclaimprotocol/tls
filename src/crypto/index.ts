@@ -149,19 +149,26 @@ export const crypto: Crypto = {
 			await subtle.exportKey('raw', key)
 		)
 	},
-	async generateKeyPair(alg) {
-		let genKeyArgs: Parameters<typeof subtle.generateKey>[0]
+	async generateKeyPair(alg, opts) {
+		let genKeyArgs: RsaHashedKeyGenParams | EcKeyGenParams | AlgorithmIdentifier
 		switch (alg) {
 		case 'P-384':
 		case 'P-256':
 			genKeyArgs = {
 				name: 'ECDH',
-				// @ts-ignore
 				namedCurve: alg,
 			}
 			break
 		case 'X25519':
 			genKeyArgs = { name: 'X25519' }
+			break
+		case 'RSASSA-PKCS1-v1_5':
+			genKeyArgs = {
+				name: 'RSASSA-PKCS1-v1_5',
+				modulusLength: opts?.modulusLength || 1024,
+				publicExponent: new Uint8Array([ 1, 0, 1 ]),
+				hash: 'SHA-256'
+			}
 			break
 		default:
 			throw new Error(`Unsupported algorithm ${alg}`)
@@ -205,19 +212,18 @@ export const crypto: Crypto = {
 				key,
 				data,
 			)
-		)
+		).slice(0, data.length)
 	},
 	async decrypt(cipherSuite, opts) {
-		const name = cipherSuite === 'AES-128-CBC'
-			? 'AES-CBC'
-			: ''
-		return toUint8Array(
-			await subtle.decrypt(
-				{ name, iv: opts.iv },
-				opts.key,
-				opts.data,
+		if(cipherSuite === 'AES-128-CBC') {
+			const { decryptAesCbc } = await import('./aes-cbc')
+			const exported = toUint8Array(
+				await subtle.exportKey('raw', opts.key)
 			)
-		)
+			return decryptAesCbc(exported, opts.iv, opts.data)
+		}
+
+		throw new Error(`Unsupported cipher suite ${cipherSuite}`)
 	},
 	async authenticatedEncrypt(cipherSuite, { iv, aead, key, data }) {
 		let ciphertext: Uint8Array

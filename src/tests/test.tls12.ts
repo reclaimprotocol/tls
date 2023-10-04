@@ -1,19 +1,21 @@
 import Chance from 'chance'
 import { Socket } from 'net'
-import P from 'pino'
 import { TLSClientOptions, TLSPresharedKey } from '../types'
-import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, toHexStringWithWhitespace } from '../'
+import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP } from '../'
 import { createMockTLSServer } from './mock-tls-server'
-import { delay } from './utils'
+import { delay, logger } from './utils'
 
 const chance = new Chance()
 
 const TLS_NAMED_CURVES = Object.keys(SUPPORTED_NAMED_CURVE_MAP) as (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
 const TLS12_CIPHER_SUITES: (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[] = [
-	// our test cert is RSA -- so this won't work
+	// our test cert is RSA -- so the ECDSA tests won't work
 	// 'TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256',
+	// 'TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256',
+	// 'TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA',
 	'TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256',
-	// 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
+	'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256',
+	'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
 ]
 
 const DATA_POINTS = [
@@ -103,17 +105,8 @@ describe('TLS 1.2 Tests', () => {
 			host,
 			verifyServerCertificate: false,
 			supportedProtocolVersions: ['TLS1_2'],
-			logger: P({}),
+			logger,
 			async write({ header, content, authTag }) {
-				console.log(
-					toHexStringWithWhitespace(
-						Buffer.concat([
-							header,
-							content,
-							authTag || Buffer.from([])
-						])
-					)
-				)
 				socket.write(header)
 				socket.write(content)
 				if(authTag) {

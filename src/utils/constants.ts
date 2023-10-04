@@ -15,7 +15,7 @@ export const SUPPORTED_NAMED_CURVE_MAP = {
 	X25519: {
 		identifier: new Uint8Array([ 0x00, 0x1d ]),
 		algorithm: 'X25519'
-	} as const
+	} as const,
 }
 
 export const SUPPORTED_RECORD_TYPE_MAP = {
@@ -72,6 +72,14 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 		cipher: 'AES-128-GCM',
 	},
 	// TLS 1.2 -------------------
+	TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256: {
+		identifier: new Uint8Array([ 0xc0, 0x2f ]),
+		keyLength: 16,
+		hashLength: 32,
+		ivLength: 4,
+		hashAlgorithm: 'SHA-256',
+		cipher: 'AES-128-GCM',
+	},
 	TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256: {
 		identifier: new Uint8Array([ 0xc0, 0x2b ]),
 		keyLength: 16,
@@ -98,6 +106,14 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 	},
 	TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA: {
 		identifier: new Uint8Array([ 0xc0, 0x13 ]),
+		keyLength: 16,
+		hashLength: 20,
+		ivLength: 16,
+		hashAlgorithm: 'SHA-1',
+		cipher: 'AES-128-CBC',
+	},
+	TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA: {
+		identifier: new Uint8Array([ 0xc0, 0x09 ]),
 		keyLength: 16,
 		hashLength: 20,
 		ivLength: 16,

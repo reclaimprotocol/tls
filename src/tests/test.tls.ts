@@ -6,7 +6,7 @@ import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP } from '../utils/
 import { strToUint8Array } from '../utils/generics'
 import { makeTLSClient } from '../'
 import { createMockTLSServer } from './mock-tls-server'
-import { delay } from './utils'
+import { delay, logger } from './utils'
 
 const chance = new Chance()
 
@@ -177,6 +177,7 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 			host,
 			verifyServerCertificate: false,
 			cipherSuites: [cipherSuite],
+			logger,
 			async write({ header, content, authTag }) {
 				socket.write(header)
 				socket.write(content)

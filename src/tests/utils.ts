@@ -1,3 +1,5 @@
+import P from 'pino'
+
 export function delay(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -17,3 +19,6 @@ export function expectBuffsEq(a: Uint8Array, b: Uint8Array) {
 export function bufferFromHexStringWithWhitespace(txt: string) {
 	return Buffer.from(txt.replace(/\s/g, ''), 'hex')
 }
+
+export const logger = P({})
+logger.level = process.env.LOG_LEVEL || 'info'
