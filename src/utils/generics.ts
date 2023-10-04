@@ -1,3 +1,5 @@
+import { AuthenticatedSymmetricCryptoAlgorithm, SymmetricCryptoAlgorithm } from '../types'
+
 /**
  * Converts a buffer to a hex string with whitespace between each byte
  * @returns eg. '01 02 03 04'
@@ -68,7 +70,9 @@ export function generateIV(iv: Uint8Array, recordNumber: number) {
  * -> [ 0x0a, 0x0b, 0x0c, 0x04, 0x04, 0x04, 0x04, 0x04 ]
  */
 export function padTls(data: Uint8Array, blockSize: number) {
-	const nextMultiple = Math.ceil(data.length / blockSize) * blockSize
+	const nextMultiple = data.length % blockSize === 0
+		? data.length + blockSize
+		: Math.ceil(data.length / blockSize) * blockSize
 	const paddingLength = nextMultiple - data.length
 	if(!paddingLength) {
 		return data
@@ -80,4 +84,10 @@ export function padTls(data: Uint8Array, blockSize: number) {
 	padded.fill(paddingNum, data.length)
 	padded.fill(paddingNum, nextMultiple - 1)
 	return padded
+}
+
+export function isSymmetricCipher(
+	cipher: SymmetricCryptoAlgorithm | AuthenticatedSymmetricCryptoAlgorithm
+): cipher is SymmetricCryptoAlgorithm {
+	return cipher === 'AES-128-CBC'
 }

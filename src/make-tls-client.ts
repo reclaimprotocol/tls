@@ -1,5 +1,5 @@
 import { packClientHello } from './utils/client-hello'
-import { CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
+import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
 import { computeSharedKeys, computeSharedKeysTls12, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
 import { generateFinishTls12, packClientFinishTls12, packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
 import { areUint8ArraysEqual, concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
@@ -82,6 +82,11 @@ export function makeTLSClient({
 			// we need to decrypt the packet
 			if(cipherSpecChanged || type === PACKET_TYPE.WRAPPED_RECORD) {
 				logger.trace('recv wrapped record')
+				if(type !== PACKET_TYPE.WRAPPED_RECORD && !authTag) {
+					authTag = content.slice(-AUTH_TAG_BYTE_LENGTH)
+					content = content.slice(0, AUTH_TAG_BYTE_LENGTH)
+				}
+
 				const decrypted = await decryptWrappedRecord(
 					content,
 					{
@@ -94,6 +99,7 @@ export function makeTLSClient({
 						macKey: 'serverMacKey' in keys!
 							? keys.serverMacKey
 							: undefined,
+						version: connTlsVersion!,
 					}
 				)
 				data = decrypted.plaintext
@@ -484,7 +490,9 @@ export function makeTLSClient({
 		} = await encryptWrappedRecord(
 			{
 				plaintext: opts.data,
-				contentType: opts.contentType,
+				contentType: connTlsVersion === 'TLS1_3'
+					? opts.contentType
+					: undefined,
 			},
 			{
 				key: keys!.clientEncKey,
@@ -494,13 +502,19 @@ export function makeTLSClient({
 				macKey: 'clientMacKey' in keys!
 					? keys.clientMacKey
 					: undefined,
-				recordHeaderOpts: opts,
+				recordHeaderOpts: {
+					type: opts.type,
+					version: opts.version
+				},
+				version: connTlsVersion!,
 			}
 		)
 
 		recordSendCount += 1
 
-		const header = packPacketHeader(ciphertext.length, opts)
+		const totalLength = ciphertext.length
+			+ (authTag?.length || 0)
+		const header = packPacketHeader(totalLength, opts)
 
 		await write({
 			header,

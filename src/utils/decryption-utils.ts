@@ -1,7 +1,7 @@
 import { crypto } from '../crypto'
 import { HashAlgorithm } from '../types'
 import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
+import { concatenateUint8Arrays, isSymmetricCipher, strToUint8Array, uint8ArrayToDataView } from './generics'
 import { packWithLength } from './packets'
 
 type DeriveTrafficKeysOptions = {
@@ -43,7 +43,8 @@ export async function computeSharedKeysTls12(opts: DeriveTrafficKeysOptionsTls12
 		keyLength,
 		cipher,
 		hashLength,
-		hashAlgorithm: cipherHashAlg
+		hashAlgorithm: cipherHashAlg,
+		ivLength
 	} = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	const masterKey = await crypto
 		.importKey(hashAlgorithm, masterSecret)
@@ -75,14 +76,15 @@ export async function computeSharedKeysTls12(opts: DeriveTrafficKeysOptionsTls12
 
 	let expandedSecret = concatenateUint8Arrays(expandedSecretArr)
 
-	const clientMacKey = await crypto.importKey(
+	const needsMac = isSymmetricCipher(cipher)
+	const clientMacKey = needsMac ? await crypto.importKey(
 		cipherHashAlg,
 		readExpandedSecret(hashLength),
-	)
-	const serverMacKey = await crypto.importKey(
+	) : undefined
+	const serverMacKey = needsMac ? await crypto.importKey(
 		cipherHashAlg,
 		readExpandedSecret(hashLength)
-	)
+	) : undefined
 
 	const clientEncKey = await crypto.importKey(
 		cipher,
@@ -94,8 +96,8 @@ export async function computeSharedKeysTls12(opts: DeriveTrafficKeysOptionsTls12
 		readExpandedSecret(keyLength)
 	)
 
-	const clientIv = readExpandedSecret(16)
-	const serverIv = readExpandedSecret(16)
+	const clientIv = readExpandedSecret(ivLength)
+	const serverIv = readExpandedSecret(ivLength)
 
 	return {
 		type: 'TLS1_2' as const,
@@ -231,10 +233,9 @@ export async function deriveTrafficKeys({
 }
 
 export async function deriveTrafficKeysForSide(masterSecret: Uint8Array, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
-	const { hashAlgorithm, keyLength, cipher } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
-	const ivLen = 12
+	const { hashAlgorithm, keyLength, cipher, ivLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	const encKey = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'key', new Uint8Array(), keyLength)
-	const iv = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'iv', new Uint8Array(0), ivLen)
+	const iv = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'iv', new Uint8Array(0), ivLength)
 
 	return {
 		masterSecret,

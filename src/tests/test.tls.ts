@@ -15,6 +15,17 @@ const TLS_NAMED_CURVES = Object.keys(SUPPORTED_NAMED_CURVE_MAP) as (keyof typeof
 
 describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 
+	const port = chance.integer({ min: 10000, max: 20000 })
+	const srv = createMockTLSServer(port)
+
+	beforeAll(async() => {
+		await delay(200)
+	})
+
+	afterAll(() => {
+		srv.server.close()
+	})
+
 	it.each(TLS_NAMED_CURVES)('[%s] should do handshake with the server', async(curve) => {
 		const { tls, socket } = connectTLS({ namedCurves: [curve] })
 
@@ -30,17 +41,8 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 
 		expect(tls.getSessionId()).toBeDefined()
 		expect(tls.getKeys()?.clientEncKey).toBeDefined()
-	})
 
-	const port = chance.integer({ min: 10000, max: 20000 })
-	const srv = createMockTLSServer(port)
-
-	beforeAll(async() => {
-		await delay(200)
-	})
-
-	afterAll(() => {
-		srv.server.close()
+		await tls.end()
 	})
 
 	it('should send & recv data from the server', async() => {
