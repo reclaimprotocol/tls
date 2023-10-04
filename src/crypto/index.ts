@@ -149,7 +149,7 @@ export const crypto: Crypto = {
 			await subtle.exportKey('raw', key)
 		)
 	},
-	async generateKeyPair(alg, opts) {
+	async generateKeyPair(alg) {
 		let genKeyArgs: RsaHashedKeyGenParams | EcKeyGenParams | AlgorithmIdentifier
 		switch (alg) {
 		case 'P-384':
@@ -161,14 +161,6 @@ export const crypto: Crypto = {
 			break
 		case 'X25519':
 			genKeyArgs = { name: 'X25519' }
-			break
-		case 'RSASSA-PKCS1-v1_5':
-			genKeyArgs = {
-				name: 'RSASSA-PKCS1-v1_5',
-				modulusLength: opts?.modulusLength || 1024,
-				publicExponent: new Uint8Array([ 1, 0, 1 ]),
-				hash: 'SHA-256'
-			}
 			break
 		default:
 			throw new Error(`Unsupported algorithm ${alg}`)
