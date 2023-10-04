@@ -1,21 +1,61 @@
 import Chance from 'chance'
 import { Socket } from 'net'
-import { crypto } from '../crypto'
 import { TLSClientOptions, TLSPresharedKey, TLSSessionTicket } from '../types'
-import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP } from '../utils/constants'
-import { strToUint8Array } from '../utils/generics'
-import { makeTLSClient } from '../'
+import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP } from '..'
 import { createMockTLSServer } from './mock-tls-server'
-import { delay } from './utils'
+import { delay, logger } from './utils'
 
 const chance = new Chance()
 
-const TLS_CIPHER_SUITES = Object.keys(SUPPORTED_CIPHER_SUITE_MAP) as (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
 const TLS_NAMED_CURVES = Object.keys(SUPPORTED_NAMED_CURVE_MAP) as (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
+const TLS_DATA_MAP = {
+	'TLS1_2': {
+		NAMED_CURVES: TLS_NAMED_CURVES,
+		CIPHER_SUITES: [
+			// our test cert is RSA -- so the ECDSA tests won't work
+			// 'TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256',
+			// 'TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256',
+			// 'TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA',
+			'TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256',
+			'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256',
+			'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
+		] as (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
+	} as const,
+	'TLS1_3': {
+		NAMED_CURVES: TLS_NAMED_CURVES,
+		CIPHER_SUITES: [
+			'TLS_CHACHA20_POLY1305_SHA256',
+			'TLS_AES_256_GCM_SHA384',
+			'TLS_AES_128_GCM_SHA256'
+		] as (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
+	} as const
+}
 
-describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
+const TLS_VERSIONS = Object.keys(TLS_DATA_MAP) as (keyof typeof TLS_DATA_MAP)[]
 
-	it.each(TLS_NAMED_CURVES)('[%s] should do handshake with the server', async(curve) => {
+const DATA_POINTS = [
+	strToUint8Array('hi'),
+	strToUint8Array('hello world'),
+	crypto.randomBytes(chance.integer({ min: 50, max: 150 })),
+]
+
+describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
+
+	const port = chance.integer({ min: 10000, max: 20000 })
+	const srv = createMockTLSServer(port)
+
+	beforeAll(async() => {
+		await delay(200)
+	})
+
+	afterAll(async() => {
+		srv.server.close()
+		await delay(100)
+	})
+
+	it.each(
+		TLS_DATA_MAP[tlsversion].NAMED_CURVES
+	)('[%s] should do handshake with the server', async(curve) => {
 		const { tls, socket } = connectTLS({ namedCurves: [curve] })
 
 		while(!tls.isHandshakeDone()) {
@@ -30,42 +70,53 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 
 		expect(tls.getSessionId()).toBeDefined()
 		expect(tls.getKeys()?.clientEncKey).toBeDefined()
+
+		await tls.end()
 	})
 
-	const port = chance.integer({ min: 10000, max: 20000 })
-	const srv = createMockTLSServer(port)
+	describe.each(
+		TLS_DATA_MAP[tlsversion].CIPHER_SUITES
+	)('[%s] Data Exchange', (cipher) => {
 
-	beforeAll(async() => {
-		await delay(200)
-	})
-
-	afterAll(() => {
-		srv.server.close()
-	})
-
-	it('should send & recv data from the server', async() => {
 		const onRecvData = jest.fn()
-		const { tls, socket } = connectTLS({
-			onRecvData
-		})
+		let conn: ReturnType<typeof connectTLS>
 
-		while(!tls.isHandshakeDone()) {
-			await delay(100)
-		}
-
-		const data = strToUint8Array('hello world')
-		tls.write(data)
-
-		const recvData = await new Promise<Uint8Array>(resolve => {
-			onRecvData.mockImplementationOnce((plaintext) => {
-				resolve(plaintext)
+		beforeAll(async() => {
+			conn = connectTLS({
+				onRecvData,
+				cipherSuites: [cipher]
 			})
+			while(!conn.tls.isHandshakeDone()) {
+				await delay(100)
+			}
 		})
 
-		expect(recvData).toEqual(data)
+		afterAll(async() => {
+			conn.socket.end()
+			await conn.tls.end()
+		})
 
-		socket.end()
+		for(const data of DATA_POINTS) {
+			it(`should send & recv ${data.length} bytes from the server`, async() => {
+				const { tls } = conn
+				const recvDataPromise = new Promise<Uint8Array>(resolve => {
+					onRecvData.mockImplementationOnce((plaintext) => {
+						resolve(plaintext)
+					})
+				})
+
+				await tls.write(data)
+
+				const recvData = await recvDataPromise
+				expect(recvData).toEqual(data)
+			})
+		}
 	})
+
+	if(tlsversion === 'TLS1_2') {
+		return
+	}
+
 
 	it('should recv a session ticket', async() => {
 		const onSessionTicket = jest.fn()
@@ -174,13 +225,13 @@ describe.each(TLS_CIPHER_SUITES)('[%s] TLS Tests', (cipherSuite) => {
 		const tls = makeTLSClient({
 			host,
 			verifyServerCertificate: false,
-			cipherSuites: [cipherSuite],
-			async write({ header, content, authTag }) {
+			supportedProtocolVersions: [
+				tlsversion
+			],
+			logger,
+			async write({ header, content }) {
 				socket.write(header)
 				socket.write(content)
-				if(authTag) {
-					socket.write(authTag)
-				}
 			},
 			...opts,
 		})

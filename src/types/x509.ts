@@ -11,6 +11,7 @@ export type X509Certificate<T = any> = {
 	internal: T
 	isIssuer(ofCert: X509Certificate<T>): boolean
 	getPublicKey(): CertificatePublicKey
+	getPublicKeyAlgorithm(): Algorithm
 	/**
 	 * verify this certificate issued the certificate passed
 	 * @param otherCert the supposedly issued certificate to verify

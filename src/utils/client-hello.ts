@@ -1,7 +1,7 @@
 import { crypto } from '../crypto'
-import { Key, TLSPresharedKey } from '../types'
+import { Key, TLSPresharedKey, TLSProtocolVersion } from '../types'
 import { getHash } from '../utils/decryption-utils'
-import { COMPRESSION_MODE, CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
+import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from './constants'
 import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
 import { packWith3ByteLength, packWithLength } from './packets'
 
@@ -16,6 +16,7 @@ type ClientHelloOptions = {
 	sessionId?: Uint8Array
 	psk?: TLSPresharedKey
 	cipherSuites?: (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
+	supportedProtocolVersions?: TLSProtocolVersion[]
 }
 
 type ExtensionData = {
@@ -25,6 +26,13 @@ type ExtensionData = {
 	lengthBytes?: number
 }
 
+const CLIENT_VERSION = new Uint8Array([ 0x03, 0x03 ])
+// no compression, as our client won't support it
+// neither does TLS1.3
+const COMPRESSION_MODE = new Uint8Array([ 0x01, 0x00 ])
+
+const RENEGOTIATION_INFO = new Uint8Array([ 0xff, 0x01, 0x00, 0x01, 0x00 ])
+
 export async function packClientHello({
 	host,
 	sessionId,
@@ -32,25 +40,31 @@ export async function packClientHello({
 	keysToShare,
 	psk,
 	cipherSuites,
+	supportedProtocolVersions
 }: ClientHelloOptions) {
 	// generate random & sessionId if not provided
-	random = random || crypto.randomBytes(32)
-	sessionId = sessionId || crypto.randomBytes(32)
+	random ||= crypto.randomBytes(32)
+	sessionId ||= crypto.randomBytes(32)
+	supportedProtocolVersions ||= Object
+		.keys(TLS_PROTOCOL_VERSION_MAP) as TLSProtocolVersion[]
 
 	const packedSessionId = packWithLength(sessionId).slice(1)
 	const cipherSuiteList = (cipherSuites || Object.keys(SUPPORTED_CIPHER_SUITE_MAP))
 		.map(cipherSuite => SUPPORTED_CIPHER_SUITE_MAP[cipherSuite].identifier)
-	const packedCipherSuites = packWithLength(concatenateUint8Arrays(cipherSuiteList))
+	const packedCipherSuites = packWithLength(
+		concatenateUint8Arrays(cipherSuiteList)
+	)
 	const extensionsList = [
 		packServerNameExtension(host),
 		packSupportedGroupsExtension(
 			keysToShare.map(k => k.type)
 		),
 		packSessionTicketExtension(),
-		packVersionsExtension(),
+		packVersionsExtension(supportedProtocolVersions),
 		packSignatureAlgorithmsExtension(),
 		packPresharedKeyModeExtension(),
-		await packKeyShareExtension(keysToShare)
+		await packKeyShareExtension(keysToShare),
+		RENEGOTIATION_INFO
 	]
 
 	if(psk) {
@@ -60,7 +74,7 @@ export async function packClientHello({
 	const packedExtensions = packWithLength(concatenateUint8Arrays(extensionsList))
 
 	const handshakeData = concatenateUint8Arrays([
-		LEGACY_PROTOCOL_VERSION,
+		CLIENT_VERSION,
 		random,
 		packedSessionId,
 		packedCipherSuites,
@@ -146,10 +160,12 @@ function packSessionTicketExtension() {
 	})
 }
 
-function packVersionsExtension() {
+function packVersionsExtension(supportedVersions: TLSProtocolVersion[]) {
 	return packExtension({
 		type: 'SUPPORTED_VERSIONS',
-		data: CURRENT_PROTOCOL_VERSION,
+		data: concatenateUint8Arrays(
+			supportedVersions.map(v => TLS_PROTOCOL_VERSION_MAP[v])
+		),
 		lengthBytes: 1
 	})
 }

@@ -1,12 +1,17 @@
-import type { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP } from '../utils/constants'
+import type { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, TLS_PROTOCOL_VERSION_MAP } from '../utils/constants'
 import type { Key } from './crypto'
 import { Logger } from './logger'
 import type { X509Certificate } from './x509'
 
+export type TLSProtocolVersion = keyof typeof TLS_PROTOCOL_VERSION_MAP
+
 export type TLSPacket = {
 	header: Uint8Array
 	content: Uint8Array
-	authTag?: Uint8Array
+}
+
+export type TLSProcessContext = {
+	version: TLSProtocolVersion
 }
 
 export type TLSConnectionOptions = {
@@ -43,6 +48,8 @@ export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {
 
 	logger?: Logger
 
+	supportedProtocolVersions?: TLSProtocolVersion[]
+
 	write(packet: TLSPacket): Promise<void>
 }
 
@@ -71,10 +78,7 @@ export type TLSHandshakeOptions = {
 export type TLSEventHandlers = {
 	onHandshake?(): void
 	onRecvCertificates?(obj: { certificates: X509Certificate[] }): void
-	onRecvData?(plaintext: Uint8Array, ctx: {
-		ciphertext: Uint8Array
-		authTag: Uint8Array
-	}): void
+	onRecvData?(plaintext: Uint8Array, ctx: { ciphertext: Uint8Array }): void
 	onTlsEnd?(error?: Error): void
 	onSessionTicket?(ticket: TLSSessionTicket): void
 }

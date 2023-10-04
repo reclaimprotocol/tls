@@ -1,3 +1,5 @@
+import { AuthenticatedSymmetricCryptoAlgorithm, SymmetricCryptoAlgorithm } from '../types'
+
 /**
  * Converts a buffer to a hex string with whitespace between each byte
  * @returns eg. '01 02 03 04'
@@ -58,4 +60,45 @@ export function generateIV(iv: Uint8Array, recordNumber: number) {
 	const recordBufferView = new DataView(recordBuffer.buffer)
 	recordBufferView.setUint32(iv.length - 4, recordNumber)
 	return xor(iv, recordBuffer)
+}
+
+/**
+ * TLS has this special sort of padding where the last byte
+ * is the number of padding bytes, and all the padding bytes
+ * are the same as the last byte.
+ * Eg. for an 8 byte block [ 0x0a, 0x0b, 0x0c, 0xd ]
+ * -> [ 0x0a, 0x0b, 0x0c, 0x04, 0x04, 0x04, 0x04, 0x04 ]
+ */
+export function padTls(data: Uint8Array, blockSize: number) {
+	const nextMultiple = data.length % blockSize === 0
+		? data.length + blockSize
+		: Math.ceil(data.length / blockSize) * blockSize
+	const paddingLength = nextMultiple - data.length
+
+	const paddingNum = paddingLength - 1
+	const padded = new Uint8Array(nextMultiple)
+	padded.set(data)
+	padded.fill(paddingNum, data.length)
+	padded.fill(paddingNum, nextMultiple - 1)
+	return padded
+}
+
+/**
+ * Unpad a TLS-spec padded buffer
+ */
+export function unpadTls(data: Uint8Array) {
+	const paddingLength = data[data.length - 1]
+	for(let i = 0; i < paddingLength; i++) {
+		if(data[data.length - 1 - i] !== paddingLength) {
+			throw new Error('Invalid padding')
+		}
+	}
+
+	return data.slice(0, data.length - paddingLength)
+}
+
+export function isSymmetricCipher(
+	cipher: SymmetricCryptoAlgorithm | AuthenticatedSymmetricCryptoAlgorithm
+): cipher is SymmetricCryptoAlgorithm {
+	return cipher === 'AES-128-CBC'
 }

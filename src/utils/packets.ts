@@ -1,24 +1,24 @@
-import { Logger, ProcessPacket, TLSPacket } from '../types'
-import { CURRENT_PROTOCOL_VERSION, LEGACY_PROTOCOL_VERSION, PACKET_TYPE } from './constants'
-import { areUint8ArraysEqual, concatenateUint8Arrays, uint8ArrayToDataView } from './generics'
-import { parseWrappedRecord } from './wrapped-record'
+import { Logger, ProcessPacket, TLSProtocolVersion } from '../types'
+import { PACKET_TYPE, TLS_PROTOCOL_VERSION_MAP } from './constants'
+import { concatenateUint8Arrays, uint8ArrayToDataView } from './generics'
 
 type PacketType = keyof typeof PACKET_TYPE
 
-type PacketHeaderOptions = {
+export type PacketHeaderOptions = {
 	type: PacketType
-	protoVersion?: Uint8Array
+	/**
+	 * TLS version to use in the header packet
+	 * */
+	version?: TLSProtocolVersion
 }
 
-export type PacketOptions = {
-	type: PacketType
-	protoVersion?: Uint8Array
+export type PacketOptions = PacketHeaderOptions & {
 	data: Uint8Array
 }
 
 export function packPacketHeader(
 	dataLength: number,
-	{ type, protoVersion }: PacketHeaderOptions
+	{ type, version = 'TLS1_2' }: PacketHeaderOptions
 ) {
 	const lengthBuffer = new Uint8Array(2)
 	const dataView = uint8ArrayToDataView(lengthBuffer)
@@ -26,7 +26,7 @@ export function packPacketHeader(
 
 	return concatenateUint8Arrays([
 		new Uint8Array([ PACKET_TYPE[type] ]),
-		protoVersion || LEGACY_PROTOCOL_VERSION,
+		TLS_PROTOCOL_VERSION_MAP[version],
 		lengthBuffer
 	])
 }
@@ -83,10 +83,10 @@ export function packWithLength(data: Uint8Array) {
 	return buffer
 }
 
-const SUPPORTED_PROTO_VERSIONS = [
-	LEGACY_PROTOCOL_VERSION,
-	CURRENT_PROTOCOL_VERSION,
-]
+// const SUPPORTED_PROTO_VERSIONS = [
+// 	LEGACY_PROTOCOL_VERSION,
+// 	CURRENT_PROTOCOL_VERSION,
+// ]
 
 /**
  * Processes an incoming stream of TLS packets
@@ -132,13 +132,13 @@ export function makeMessageProcessor(logger: Logger) {
 					bytesLeft = buffDataView.getUint16(3)
 					currentMessageHeader = buffer.slice(0, 5)
 
-					const protoVersion = currentMessageHeader.slice(1, 3)
-					const isSupportedVersion = SUPPORTED_PROTO_VERSIONS
-						.some((v) => areUint8ArraysEqual(v, protoVersion))
+					// const protoVersion = currentMessageHeader.slice(1, 3)
+					// const isSupportedVersion = SUPPORTED_PROTO_VERSIONS
+					// 	.some((v) => areUint8ArraysEqual(v, protoVersion))
 
-					if(!isSupportedVersion) {
-						throw new Error(`Unsupported protocol version (${protoVersion})`)
-					}
+					// if(!isSupportedVersion) {
+					// 	throw new Error(`Unsupported protocol version (${protoVersion})`)
+					// }
 
 					// remove the packet header
 					buffer = buffer.slice(5)
@@ -157,17 +157,10 @@ export function makeMessageProcessor(logger: Logger) {
 				const body = buffer.slice(0, bytesLeft)
 
 				logger.trace({ type: currentMessageType }, 'got complete packet')
-				const parsedPacket: TLSPacket = {
+				onChunk(currentMessageType, {
 					header: currentMessageHeader!,
 					content: body
-				}
-				if(currentMessageType === PACKET_TYPE.WRAPPED_RECORD) {
-					const { encryptedData, authTag } = parseWrappedRecord(body)
-					parsedPacket.content = encryptedData
-					parsedPacket.authTag = authTag
-				}
-
-				onChunk(currentMessageType, parsedPacket)
+				})
 
 				currentMessageType = undefined
 

@@ -1,10 +1,12 @@
 import { crypto } from '../crypto'
-import { CURRENT_PROTOCOL_VERSION, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_CIPHER_SUITES, SUPPORTED_EXTENSION_MAP, SUPPORTED_EXTENSIONS, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES } from './constants'
+import { TLSProtocolVersion } from '../types'
+import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_CIPHER_SUITES, SUPPORTED_EXTENSION_MAP, SUPPORTED_EXTENSIONS, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, TLS_PROTOCOL_VERSION_MAP } from './constants'
 import { areUint8ArraysEqual, uint8ArrayToDataView } from './generics'
 import { expectReadWithLength } from './packets'
 
 export async function parseServerHello(data: Uint8Array) {
-	const serverVersion = read(2)
+	// header TLS version (expected to be 0x0303)
+	read(2)
 	const serverRandom = read(32)
 	const sessionId = readWLength(1)
 
@@ -25,15 +27,20 @@ export async function parseServerHello(data: Uint8Array) {
 	let publicKey: Uint8Array | undefined
 	let publicKeyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP | undefined
 	let supportsPsk = false
+	let serverTlsVersion: TLSProtocolVersion = 'TLS1_2'
 
 	if(extensionsLength) {
 		while(data.length) {
 			const { type, extData } = readExtension()
 			switch (type) {
 			case 'SUPPORTED_VERSIONS':
-				if(!areUint8ArraysEqual(CURRENT_PROTOCOL_VERSION, extData)) {
-					throw new Error(`Server does not support TLS version. Version recv: '${extData}'`)
+				const supportedV = Object.entries(TLS_PROTOCOL_VERSION_MAP)
+					.find(([, v]) => areUint8ArraysEqual(v, extData))
+				if(!supportedV) {
+					throw new Error(`Unsupported TLS version '${extData}'`)
 				}
+
+				serverTlsVersion = supportedV[0] as TLSProtocolVersion
 
 				break
 			case 'KEY_SHARE':
@@ -54,22 +61,31 @@ export async function parseServerHello(data: Uint8Array) {
 		}
 	}
 
-	if(!publicKey || !publicKeyType) {
-		throw new Error('Server did not send a public key')
+	if(
+		serverTlsVersion === 'TLS1_3'
+		&& (!publicKey || !publicKeyType)
+	) {
+		throw new Error('Missing key share in TLS 1.3')
 	}
 
 	return {
-		serverVersion,
+		serverTlsVersion,
 		serverRandom,
 		sessionId,
 		cipherSuite,
-		publicKey: await crypto.importKey(
-			SUPPORTED_NAMED_CURVE_MAP[publicKeyType].algorithm,
-			publicKey,
-			'public'
-		),
-		publicKeyType,
-		supportsPsk
+		supportsPsk,
+		...(
+			publicKey && publicKeyType
+				? {
+					publicKey: await crypto.importKey(
+						SUPPORTED_NAMED_CURVE_MAP[publicKeyType].algorithm,
+						publicKey,
+						'public'
+					),
+					publicKeyType,
+				}
+				: {}
+		)
 	}
 
 	function read(bytes: number) {

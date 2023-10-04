@@ -40,10 +40,18 @@ export const crypto: Crypto = {
 			}
 			keyUsages = ['encrypt', 'decrypt']
 			break
+		case 'AES-128-CBC':
+			subtleArgs = {
+				name: 'AES-CBC',
+				length: 128
+			}
+			keyUsages = ['encrypt', 'decrypt']
+			break
 		case 'CHACHA20-POLY1305':
 			// chaCha20 is not supported by webcrypto
 			// so we "fake" create a key
 			return raw as unknown as Key
+		case 'SHA-1':
 		case 'SHA-256':
 		case 'SHA-384':
 			subtleArgs = {
@@ -142,13 +150,12 @@ export const crypto: Crypto = {
 		)
 	},
 	async generateKeyPair(alg) {
-		let genKeyArgs: Parameters<typeof subtle.generateKey>[0]
+		let genKeyArgs: RsaHashedKeyGenParams | EcKeyGenParams | AlgorithmIdentifier
 		switch (alg) {
 		case 'P-384':
 		case 'P-256':
 			genKeyArgs = {
 				name: 'ECDH',
-				// @ts-ignore
 				namedCurve: alg,
 			}
 			break
@@ -187,6 +194,29 @@ export const crypto: Crypto = {
 		const buffer = new Uint8Array(length)
 		return webcrypto.getRandomValues(buffer)
 	},
+	async encrypt(cipherSuite, { iv, data, key }) {
+		const name = cipherSuite === 'AES-128-CBC'
+			? 'AES-CBC'
+			: ''
+		return toUint8Array(
+			await subtle.encrypt(
+				{ name, iv },
+				key,
+				data,
+			)
+		).slice(0, data.length)
+	},
+	async decrypt(cipherSuite, opts) {
+		if(cipherSuite === 'AES-128-CBC') {
+			const { decryptAesCbc } = await import('./aes-cbc')
+			const exported = toUint8Array(
+				await subtle.exportKey('raw', opts.key)
+			)
+			return decryptAesCbc(exported, opts.iv, opts.data)
+		}
+
+		throw new Error(`Unsupported cipher suite ${cipherSuite}`)
+	},
 	async authenticatedEncrypt(cipherSuite, { iv, aead, key, data }) {
 		let ciphertext: Uint8Array
 		if(cipherSuite === 'CHACHA20-POLY1305') {
@@ -211,8 +241,10 @@ export const crypto: Crypto = {
 		}
 
 		return {
-			ciphertext: ciphertext.slice(0, -AUTH_TAG_BYTE_LENGTH),
-			authTag: ciphertext.slice(-AUTH_TAG_BYTE_LENGTH),
+			ciphertext: ciphertext
+				.slice(0, -AUTH_TAG_BYTE_LENGTH),
+			authTag: ciphertext
+				.slice(-AUTH_TAG_BYTE_LENGTH),
 		}
 	},
 	async authenticatedDecrypt(cipherSuite, { iv, aead, key, data, authTag }) {

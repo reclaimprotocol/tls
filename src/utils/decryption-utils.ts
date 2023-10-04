@@ -1,7 +1,7 @@
 import { crypto } from '../crypto'
 import { HashAlgorithm } from '../types'
 import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
+import { concatenateUint8Arrays, isSymmetricCipher, strToUint8Array, uint8ArrayToDataView } from './generics'
 import { packWithLength } from './packets'
 
 type DeriveTrafficKeysOptions = {
@@ -16,7 +16,155 @@ type DeriveTrafficKeysOptions = {
 	secretType: 'hs' | 'ap'
 }
 
+type DeriveTrafficKeysOptionsTls12 = {
+	preMasterSecret: Uint8Array
+	clientRandom: Uint8Array
+	serverRandom: Uint8Array
+	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+}
+
 export type SharedKeyData = Awaited<ReturnType<typeof computeSharedKeys>>
+	| Awaited<ReturnType<typeof computeSharedKeysTls12>>
+
+const TLS1_2_BASE_SEED = strToUint8Array('master secret')
+const TLS1_2_KEY_EXPANSION_SEED = strToUint8Array('key expansion')
+
+export async function computeSharedKeysTls12(opts: DeriveTrafficKeysOptionsTls12) {
+	const {
+		clientRandom,
+		serverRandom,
+		cipherSuite,
+	} = opts
+	const masterSecret = await generateMasterSecret(opts)
+	// all key derivation in TLS 1.2 uses SHA-256
+	const hashAlgorithm = 'SHA-256'
+
+	const {
+		keyLength,
+		cipher,
+		hashLength,
+		hashAlgorithm: cipherHashAlg,
+		ivLength
+	} = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
+	const masterKey = await crypto
+		.importKey(hashAlgorithm, masterSecret)
+	const seed = concatenateUint8Arrays([
+		TLS1_2_KEY_EXPANSION_SEED,
+		serverRandom,
+		clientRandom,
+	])
+
+	const expandedSecretArr: Uint8Array[] = []
+	let lastSeed = seed
+	for(let i = 0; i < 4; i++) {
+		lastSeed = await crypto.hmac(
+			hashAlgorithm,
+			masterKey,
+			lastSeed
+		)
+		const expandedSecret = await crypto.hmac(
+			hashAlgorithm,
+			masterKey,
+			concatenateUint8Arrays([
+				lastSeed,
+				seed
+			])
+		)
+
+		expandedSecretArr.push(expandedSecret)
+	}
+
+	let expandedSecret = concatenateUint8Arrays(expandedSecretArr)
+
+	const needsMac = isSymmetricCipher(cipher)
+	const clientMacKey = needsMac ? await crypto.importKey(
+		cipherHashAlg,
+		readExpandedSecret(hashLength),
+	) : undefined
+	const serverMacKey = needsMac ? await crypto.importKey(
+		cipherHashAlg,
+		readExpandedSecret(hashLength)
+	) : undefined
+
+	const clientEncKey = await crypto.importKey(
+		cipher,
+		readExpandedSecret(keyLength)
+	)
+
+	const serverEncKey = await crypto.importKey(
+		cipher,
+		readExpandedSecret(keyLength)
+	)
+
+	const clientIv = readExpandedSecret(ivLength)
+	const serverIv = readExpandedSecret(ivLength)
+
+	return {
+		type: 'TLS1_2' as const,
+		masterSecret,
+		clientMacKey,
+		serverMacKey,
+		clientEncKey,
+		serverEncKey,
+		clientIv,
+		serverIv,
+		serverSecret: masterSecret,
+		clientSecret: masterSecret,
+	}
+
+	function readExpandedSecret(len: number) {
+		const returnVal = expandedSecret
+			.slice(0, len)
+		expandedSecret = expandedSecret
+			.slice(len)
+		return returnVal
+	}
+}
+
+async function generateMasterSecret({
+	preMasterSecret,
+	clientRandom,
+	serverRandom
+}: DeriveTrafficKeysOptionsTls12) {
+	// all key derivation in TLS 1.2 uses SHA-256
+	const hashAlgorithm = 'SHA-256'
+	const preMasterKey = await crypto
+		.importKey(hashAlgorithm, preMasterSecret)
+	const seed = concatenateUint8Arrays([
+		TLS1_2_BASE_SEED,
+		clientRandom,
+		serverRandom
+	])
+
+	const a1 = await crypto.hmac(
+		hashAlgorithm,
+		preMasterKey,
+		seed
+	)
+	const a2 = await crypto.hmac(
+		hashAlgorithm,
+		preMasterKey,
+		a1
+	)
+	const p1 = await crypto.hmac(
+		hashAlgorithm,
+		preMasterKey,
+		concatenateUint8Arrays([
+			a1,
+			seed
+		])
+	)
+	const p2 = await crypto.hmac(
+		hashAlgorithm,
+		preMasterKey,
+		concatenateUint8Arrays([
+			a2,
+			seed
+		])
+	)
+	return concatenateUint8Arrays([ p1, p2 ])
+		.slice(0, 48)
+}
 
 export function computeUpdatedTrafficMasterSecret(
 	masterSecret: Uint8Array,
@@ -73,21 +221,21 @@ export async function deriveTrafficKeys({
 	const { encKey: serverEncKey, iv: serverIv } = await deriveTrafficKeysForSide(serverSecret, cipherSuite)
 
 	return {
+		type: 'TLS1_3' as const,
 		masterSecret,
 		clientSecret,
 		serverSecret,
 		clientEncKey,
 		serverEncKey,
 		clientIv,
-		serverIv
+		serverIv,
 	}
 }
 
 export async function deriveTrafficKeysForSide(masterSecret: Uint8Array, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
-	const { hashAlgorithm, keyLength, cipher } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
-	const ivLen = 12
+	const { hashAlgorithm, keyLength, cipher, ivLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	const encKey = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'key', new Uint8Array(), keyLength)
-	const iv = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'iv', new Uint8Array(0), ivLen)
+	const iv = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'iv', new Uint8Array(0), ivLength)
 
 	return {
 		masterSecret,

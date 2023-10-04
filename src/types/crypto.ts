@@ -1,9 +1,10 @@
 
 export type Key = CryptoKey
 
-export type SymmetricCryptoAlgorithm = 'AES-256-GCM'
+export type AuthenticatedSymmetricCryptoAlgorithm = 'AES-256-GCM'
 	| 'AES-128-GCM'
 	| 'CHACHA20-POLY1305'
+export type SymmetricCryptoAlgorithm = 'AES-128-CBC'
 export type AsymmetricCryptoAlgorithm = 'X25519'
 	| 'P-256' // SECP256R1
 	| 'P-384' // SECP384R1
@@ -12,10 +13,15 @@ export type SignatureAlgorithm = 'RSA-PSS-SHA256'
 	| 'ED25519'
 	| 'RSA-PKCS1-SHA512'
 
-export type HashAlgorithm = 'SHA-256' | 'SHA-384'
-type CryptoAlgorithm = SymmetricCryptoAlgorithm
+export type HashAlgorithm = 'SHA-256' | 'SHA-384' | 'SHA-1'
 
 type Awaitable<T> = T | Promise<T>
+
+type CryptOptions = {
+	key: Key
+	iv: Uint8Array
+	data: Uint8Array
+}
 
 type AuthenticatedCryptOptions = {
 	key: Key
@@ -42,7 +48,7 @@ export type CurveImplementation = {
 }
 
 export type Crypto = {
-	importKey(alg: CryptoAlgorithm, raw: Uint8Array): Awaitable<Key>
+	importKey(alg: AuthenticatedSymmetricCryptoAlgorithm | SymmetricCryptoAlgorithm, raw: Uint8Array): Awaitable<Key>
 	importKey(alg: HashAlgorithm, raw: Uint8Array): Awaitable<Key>
 	importKey(alg: SignatureAlgorithm, raw: Uint8Array, type: 'public'): Awaitable<Key>
 	importKey(alg: AsymmetricCryptoAlgorithm, raw: Uint8Array, type: 'private' | 'public'): Awaitable<Key>
@@ -52,12 +58,24 @@ export type Crypto = {
 	calculateSharedSecret(alg: AsymmetricCryptoAlgorithm, privateKey: Key, publicKey: Key): Awaitable<Uint8Array>
 
 	randomBytes(length: number): Uint8Array
-	authenticatedEncrypt(
+	/**
+	 * Encrypts data with the given cipher suite and options.
+	 * Expects padding has already been applied to the data.
+	 */
+	encrypt(
 		cipherSuite: SymmetricCryptoAlgorithm,
+		opts: CryptOptions
+	): Awaitable<Uint8Array>
+	decrypt(
+		cipherSuite: SymmetricCryptoAlgorithm,
+		opts: CryptOptions
+	): Awaitable<Uint8Array>
+	authenticatedEncrypt(
+		cipherSuite: AuthenticatedSymmetricCryptoAlgorithm,
 		opts: AuthenticatedCryptOptions
 	): Awaitable<{ ciphertext: Uint8Array, authTag: Uint8Array }>
 	authenticatedDecrypt(
-		cipherSuite: SymmetricCryptoAlgorithm,
+		cipherSuite: AuthenticatedSymmetricCryptoAlgorithm,
 		opts: AuthenticatedCryptOptions
 	): Awaitable<{ plaintext: Uint8Array }>
 	verify(
