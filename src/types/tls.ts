@@ -88,7 +88,7 @@ export type TLSHandshakeOptions = {
 export type TLSEventHandlers = {
 	onHandshake?(): void
 	onRecvCertificates?(obj: { certificates: X509Certificate[] }): void
-	onRecvData?(plaintext: Uint8Array, ctx: TLSPacketContext): void
+	onRecvData?(packet: TLSPacket, ctx: TLSPacketContext): void
 	onTlsEnd?(error?: Error): void
 	onSessionTicket?(ticket: TLSSessionTicket): void
 }

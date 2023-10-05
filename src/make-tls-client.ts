@@ -14,14 +14,9 @@ import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
 import { crypto } from './crypto'
-import { Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
+import { Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSPacket, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
 
 const RECORD_LENGTH_BYTES = 3
-
-type Record = {
-	record: Uint8Array
-	contentType: number | undefined
-}
 
 export function makeTLSClient({
 	host,
@@ -139,7 +134,11 @@ export function makeTLSClient({
 
 			try {
 				await processRecord(
-					{ record: data, contentType },
+					{
+						content: data,
+						contentType,
+						header,
+					},
 					ctx,
 				)
 			} catch(err) {
@@ -151,9 +150,10 @@ export function makeTLSClient({
 
 	async function processRecord(
 		{
-			record,
+			content: record,
 			contentType,
-		}: Record,
+			header,
+		}: TLSPacket & { contentType?: number },
 		ctx: TLSPacketContext
 	) {
 		if(!contentType || contentType === CONTENT_TYPE_MAP.HANDSHAKE) {
@@ -341,7 +341,13 @@ export function makeTLSClient({
 			}
 		} else if(contentType === CONTENT_TYPE_MAP.APPLICATION_DATA) {
 			logger.trace({ len: record.length }, 'received application data')
-			onRecvData?.(record, ctx)
+			onRecvData?.(
+				{
+					content: record,
+					header,
+				},
+				ctx
+			)
 		} else if(contentType === CONTENT_TYPE_MAP.ALERT) {
 			await handleAlert(record)
 		} else {

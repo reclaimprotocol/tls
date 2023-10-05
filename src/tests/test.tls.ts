@@ -1,6 +1,6 @@
 import Chance from 'chance'
 import { Socket } from 'net'
-import { TLSClientOptions, TLSPresharedKey, TLSSessionTicket } from '../types'
+import { TLSClientOptions, TLSPacket, TLSPresharedKey, TLSSessionTicket } from '../types'
 import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP } from '..'
 import { createMockTLSServer } from './mock-tls-server'
 import { delay, logger } from './utils'
@@ -43,6 +43,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 
 	const port = chance.integer({ min: 10000, max: 20000 })
 	const srv = createMockTLSServer(port)
+	const onRecvData = jest.fn<void, [TLSPacket]>()
 
 	beforeAll(async() => {
 		await delay(200)
@@ -51,6 +52,10 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 	afterAll(async() => {
 		srv.server.close()
 		await delay(100)
+	})
+
+	beforeEach(() => {
+		onRecvData.mockClear()
 	})
 
 	it.each(
@@ -77,15 +82,10 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 	describe.each(
 		TLS_DATA_MAP[tlsversion].CIPHER_SUITES
 	)('[%s] Data Exchange', (cipher) => {
-
-		const onRecvData = jest.fn()
 		let conn: ReturnType<typeof connectTLS>
 
 		beforeAll(async() => {
-			conn = connectTLS({
-				onRecvData,
-				cipherSuites: [cipher]
-			})
+			conn = connectTLS({ cipherSuites: [cipher] })
 			while(!conn.tls.isHandshakeDone()) {
 				await delay(100)
 			}
@@ -100,8 +100,8 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 			it(`should send & recv ${data.length} bytes from the server`, async() => {
 				const { tls } = conn
 				const recvDataPromise = new Promise<Uint8Array>(resolve => {
-					onRecvData.mockImplementationOnce((plaintext) => {
-						resolve(plaintext)
+					onRecvData.mockImplementationOnce(({ content }) => {
+						resolve(content)
 					})
 				})
 
@@ -136,8 +136,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 
 	it('should resume a session with ticket', async() => {
 		const psk = await getPsk()
-		const onRecvData = jest.fn()
-		const { tls, socket } = connectTLS({ onRecvData }, psk)
+		const { tls, socket } = connectTLS({}, psk)
 
 		while(!tls.isHandshakeDone()) {
 			await delay(100)
@@ -151,8 +150,8 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 		tls.write(data)
 
 		const recvData = await new Promise<Uint8Array>(resolve => {
-			onRecvData.mockImplementationOnce((plaintext) => {
-				resolve(plaintext)
+			onRecvData.mockImplementationOnce(({ content }) => {
+				resolve(content)
 			})
 		})
 
@@ -182,8 +181,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 	})
 
 	it('should update traffic keys', async() => {
-		const onRecvData = jest.fn()
-		const { tls, socket } = connectTLS({ onRecvData })
+		const { tls, socket } = connectTLS({})
 
 		while(!tls.isHandshakeDone()) {
 			await delay(100)
@@ -197,8 +195,8 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 		await tls.write(data)
 
 		const recvData = await new Promise<Uint8Array>(resolve => {
-			onRecvData.mockImplementationOnce((plaintext) => {
-				resolve(plaintext)
+			onRecvData.mockImplementationOnce(({ content }) => {
+				resolve(content)
 			})
 		})
 
@@ -229,6 +227,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 				tlsversion
 			],
 			logger,
+			onRecvData,
 			async write({ header, content }) {
 				socket.write(header)
 				socket.write(content)
