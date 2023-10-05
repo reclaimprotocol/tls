@@ -133,7 +133,9 @@ export function makeTLSClient({
 				ctx,
 			)
 
-			if(type === PACKET_TYPE.CHANGE_CIPHER_SPEC) {
+			if(type === PACKET_TYPE.WRAPPED_RECORD) {
+				// do nothing
+			} else if(type === PACKET_TYPE.CHANGE_CIPHER_SPEC) {
 				logger.debug('received change cipher spec')
 				cipherSpecChanged = true
 			} else if(type === PACKET_TYPE.ALERT) {
