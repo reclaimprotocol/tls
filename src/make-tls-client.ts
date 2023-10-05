@@ -133,15 +133,18 @@ export function makeTLSClient({
 				ctx,
 			)
 
-			if(type === PACKET_TYPE.WRAPPED_RECORD) {
-				// do nothing
+			if(
+				type === PACKET_TYPE.WRAPPED_RECORD
+				|| type === PACKET_TYPE.HELLO
+			) {
+				// do nothing -- pass through
 			} else if(type === PACKET_TYPE.CHANGE_CIPHER_SPEC) {
 				logger.debug('received change cipher spec')
 				cipherSpecChanged = true
+				return
 			} else if(type === PACKET_TYPE.ALERT) {
 				await handleAlert(content)
-			} else if(type === PACKET_TYPE.HELLO) {
-				// do nothing
+				return
 			} else {
 				logger.warn(
 					{
