@@ -14,14 +14,13 @@ import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
 import { crypto } from './crypto'
-import { Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
+import { Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
 
 const RECORD_LENGTH_BYTES = 3
 
 type Record = {
 	record: Uint8Array
 	contentType: number | undefined
-	ciphertext: Uint8Array | undefined
 }
 
 export function makeTLSClient({
@@ -75,12 +74,17 @@ export function makeTLSClient({
 
 			let data = content
 			let contentType: number | undefined
-			let ciphertext: Uint8Array | undefined
+			let ctx: TLSPacketContext = {
+				type: 'plaintext',
+			}
 			// if the cipher spec has changed,
 			// the data will be encrypted, so
 			// we need to decrypt the packet
 			if(cipherSpecChanged || type === PACKET_TYPE.WRAPPED_RECORD) {
 				logger.trace('recv wrapped record')
+				const macKey = 'serverMacKey' in keys!
+					? keys.serverMacKey
+					: undefined
 				const decrypted = await decryptWrappedRecord(
 					content,
 					{
@@ -89,15 +93,19 @@ export function makeTLSClient({
 						recordHeader: header,
 						recordNumber: recordRecvCount,
 						cipherSuite: cipherSuite!,
-						macKey: 'serverMacKey' in keys!
-							? keys.serverMacKey
-							: undefined,
 						version: connTlsVersion!,
+						macKey,
 					}
 				)
 				data = decrypted.plaintext
-				ciphertext = decrypted.ciphertext
 				contentType = decrypted.contentType || type
+				ctx = {
+					type: 'ciphertext',
+					encKey: keys!.serverEncKey,
+					iv: keys!.serverIv,
+					recordNumber: recordRecvCount,
+					macKey,
+				}
 
 				logger.debug(
 					{
@@ -130,11 +138,10 @@ export function makeTLSClient({
 			}
 
 			try {
-				await processRecord({
-					record: data,
-					contentType,
-					ciphertext,
-				})
+				await processRecord(
+					{ record: data, contentType },
+					ctx,
+				)
 			} catch(err) {
 				logger.error({ err }, 'error processing record')
 				end(err)
@@ -146,8 +153,8 @@ export function makeTLSClient({
 		{
 			record,
 			contentType,
-			ciphertext
-		}: Record
+		}: Record,
+		ctx: TLSPacketContext
 	) {
 		if(!contentType || contentType === CONTENT_TYPE_MAP.HANDSHAKE) {
 			handshakePacketStream = concatenateUint8Arrays([ handshakePacketStream, record ])
@@ -334,7 +341,7 @@ export function makeTLSClient({
 			}
 		} else if(contentType === CONTENT_TYPE_MAP.APPLICATION_DATA) {
 			logger.trace({ len: record.length }, 'received application data')
-			onRecvData?.(record, { ciphertext: ciphertext!, })
+			onRecvData?.(record, ctx)
 		} else if(contentType === CONTENT_TYPE_MAP.ALERT) {
 			await handleAlert(record)
 		} else {
@@ -467,46 +474,6 @@ export function makeTLSClient({
 		recordRecvCount = 0
 	}
 
-	async function writeEncryptedPacket(
-		opts: PacketOptions & { contentType?: keyof typeof CONTENT_TYPE_MAP }
-	) {
-		logger.trace(
-			{ ...opts, data: toHexStringWithWhitespace(opts.data) },
-			'writing enc packet'
-		)
-
-		const { ciphertext } = await encryptWrappedRecord(
-			{
-				plaintext: opts.data,
-				contentType: connTlsVersion === 'TLS1_3'
-					? opts.contentType
-					: undefined,
-			},
-			{
-				key: keys!.clientEncKey,
-				iv: keys!.clientIv,
-				recordNumber: recordSendCount,
-				cipherSuite: cipherSuite!,
-				macKey: 'clientMacKey' in keys!
-					? keys.clientMacKey
-					: undefined,
-				recordHeaderOpts: {
-					type: opts.type,
-					version: opts.version
-				},
-				version: connTlsVersion!,
-			}
-		)
-
-		recordSendCount += 1
-		const header = packPacketHeader(ciphertext.length, opts)
-
-		await write({
-			header,
-			content: ciphertext,
-		})
-	}
-
 	async function processServerPubKey(data: {
 		publicKeyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP
 		publicKey: Key
@@ -551,13 +518,65 @@ export function makeTLSClient({
 		})
 	}
 
+
+	async function writeEncryptedPacket(
+		opts: PacketOptions & { contentType?: keyof typeof CONTENT_TYPE_MAP }
+	) {
+		logger.trace(
+			{ ...opts, data: toHexStringWithWhitespace(opts.data) },
+			'writing enc packet'
+		)
+
+		const macKey = 'clientMacKey' in keys!
+			? keys.clientMacKey
+			: undefined
+		const { ciphertext } = await encryptWrappedRecord(
+			{
+				plaintext: opts.data,
+				contentType: connTlsVersion === 'TLS1_3'
+					? opts.contentType
+					: undefined,
+			},
+			{
+				key: keys!.clientEncKey,
+				iv: keys!.clientIv,
+				recordNumber: recordSendCount,
+				cipherSuite: cipherSuite!,
+				macKey,
+				recordHeaderOpts: {
+					type: opts.type,
+					version: opts.version
+				},
+				version: connTlsVersion!,
+			}
+		)
+
+		const header = packPacketHeader(ciphertext.length, opts)
+
+		await write(
+			{ header, content: ciphertext },
+			{
+				type: 'ciphertext',
+				encKey: keys!.clientEncKey,
+				iv: keys!.clientIv,
+				recordNumber: recordSendCount,
+				macKey,
+			}
+		)
+
+		recordSendCount += 1
+	}
+
 	async function writePacket(opts: PacketOptions) {
 		logger.trace(
 			{ ...opts, data: toHexStringWithWhitespace(opts.data) },
 			'writing packet'
 		)
 		const header = packPacketHeader(opts.data.length, opts)
-		await write({ header, content: opts.data })
+		await write(
+			{ header, content: opts.data },
+			{ type: 'plaintext' }
+		)
 	}
 
 	async function end(error?: Error) {

@@ -10,6 +10,16 @@ export type TLSPacket = {
 	content: Uint8Array
 }
 
+export type TLSPacketContext = {
+	type: 'plaintext'
+} | {
+	type: 'ciphertext'
+	encKey: Key
+	iv: Uint8Array
+	macKey?: Key
+	recordNumber: number
+}
+
 export type TLSProcessContext = {
 	version: TLSProtocolVersion
 }
@@ -50,7 +60,7 @@ export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {
 
 	supportedProtocolVersions?: TLSProtocolVersion[]
 
-	write(packet: TLSPacket): Promise<void>
+	write(packet: TLSPacket, ctx: TLSPacketContext): Promise<void>
 }
 
 export type TLSPresharedKey = {
@@ -78,7 +88,7 @@ export type TLSHandshakeOptions = {
 export type TLSEventHandlers = {
 	onHandshake?(): void
 	onRecvCertificates?(obj: { certificates: X509Certificate[] }): void
-	onRecvData?(plaintext: Uint8Array, ctx: { ciphertext: Uint8Array }): void
+	onRecvData?(plaintext: Uint8Array, ctx: TLSPacketContext): void
 	onTlsEnd?(error?: Error): void
 	onSessionTicket?(ticket: TLSSessionTicket): void
 }
