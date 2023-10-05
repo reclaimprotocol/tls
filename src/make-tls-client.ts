@@ -76,6 +76,7 @@ export function makeTLSClient({
 			let contentType: number | undefined
 			let ctx: TLSPacketContext = {
 				type: 'plaintext',
+				header,
 			}
 			// if the cipher spec has changed,
 			// the data will be encrypted, so
@@ -105,6 +106,7 @@ export function makeTLSClient({
 					iv: keys!.serverIv,
 					recordNumber: recordRecvCount,
 					macKey,
+					header,
 				}
 
 				logger.debug(
@@ -561,6 +563,7 @@ export function makeTLSClient({
 				iv: keys!.clientIv,
 				recordNumber: recordSendCount,
 				macKey,
+				header,
 			}
 		)
 
@@ -575,7 +578,7 @@ export function makeTLSClient({
 		const header = packPacketHeader(opts.data.length, opts)
 		await write(
 			{ header, content: opts.data },
-			{ type: 'plaintext' }
+			{ type: 'plaintext', header }
 		)
 	}
 
