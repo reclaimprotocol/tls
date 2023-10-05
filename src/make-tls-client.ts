@@ -123,14 +123,21 @@ export function makeTLSClient({
 					'decrypted wrapped record'
 				)
 				recordRecvCount += 1
-			} else if(type === PACKET_TYPE.CHANGE_CIPHER_SPEC) {
+			}
+
+			onRead?.(
+				{
+					content: data,
+					header,
+				},
+				ctx,
+			)
+
+			if(type === PACKET_TYPE.CHANGE_CIPHER_SPEC) {
 				logger.debug('received change cipher spec')
 				cipherSpecChanged = true
-
-				return
 			} else if(type === PACKET_TYPE.ALERT) {
 				await handleAlert(content)
-				return
 			} else if(type === PACKET_TYPE.HELLO) {
 				// do nothing
 			} else {
@@ -145,13 +152,6 @@ export function makeTLSClient({
 			}
 
 			try {
-				onRead?.(
-					{
-						content: data,
-						header,
-					},
-					ctx,
-				)
 				await processRecord(
 					{
 						content: data,
