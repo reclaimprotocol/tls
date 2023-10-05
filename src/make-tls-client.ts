@@ -68,7 +68,7 @@ export function makeTLSClient({
 			}
 
 			let data = content
-			let contentType: number | undefined
+			let contentType: keyof typeof CONTENT_TYPE_MAP | undefined
 			let ctx: TLSPacketContext = {
 				type: 'plaintext',
 			}
@@ -93,19 +93,30 @@ export function makeTLSClient({
 					}
 				)
 				data = decrypted.plaintext
-				contentType = decrypted.contentType || type
+				if(connTlsVersion === 'TLS1_3') {
+					// TLS 1.3 has an extra byte for content type
+					// exclude final byte (content type)
+					const contentTypeNum = data.slice(-1)[0]
+					contentType = Object.entries(CONTENT_TYPE_MAP)
+						.find(([, val]) => val === contentTypeNum)?.[0] as keyof typeof CONTENT_TYPE_MAP
+					data = data.slice(0, -1)
+				}
+
 				ctx = {
 					type: 'ciphertext',
 					encKey: keys!.serverEncKey,
 					iv: keys!.serverIv,
 					recordNumber: recordRecvCount,
 					macKey,
+					ciphertext: content,
+					plaintext: data,
+					contentType,
 				}
 
 				logger.debug(
 					{
 						recordRecvCount,
-						contentType: contentType?.toString(16),
+						contentType,
 						length: data.length,
 					},
 					'decrypted wrapped record'
@@ -136,7 +147,9 @@ export function makeTLSClient({
 				await processRecord(
 					{
 						content: data,
-						contentType,
+						contentType: contentType
+							? CONTENT_TYPE_MAP[contentType]
+							: undefined,
 						header,
 					},
 					ctx,
@@ -156,7 +169,8 @@ export function makeTLSClient({
 		}: TLSPacket & { contentType?: number },
 		ctx: TLSPacketContext
 	) {
-		if(!contentType || contentType === CONTENT_TYPE_MAP.HANDSHAKE) {
+		contentType ??= header[0]
+		if(contentType === CONTENT_TYPE_MAP.HANDSHAKE) {
 			handshakePacketStream = concatenateUint8Arrays([ handshakePacketStream, record ])
 			let data = readPacket()
 			while(data) {
@@ -352,7 +366,7 @@ export function makeTLSClient({
 			await handleAlert(record)
 		} else {
 			logger.warn(
-				{ record: record, contentType: contentType.toString(16) },
+				{ record: record, contentType: contentType?.toString(16) },
 				'cannot process record'
 			)
 		}
@@ -524,7 +538,6 @@ export function makeTLSClient({
 		})
 	}
 
-
 	async function writeEncryptedPacket(
 		opts: PacketOptions & { contentType?: keyof typeof CONTENT_TYPE_MAP }
 	) {
@@ -536,13 +549,20 @@ export function makeTLSClient({
 		const macKey = 'clientMacKey' in keys!
 			? keys.clientMacKey
 			: undefined
+
+		let plaintext = opts.data
+		if(
+			connTlsVersion === 'TLS1_3'
+			&& typeof opts.contentType !== 'undefined'
+		) {
+			plaintext = concatenateUint8Arrays([
+				plaintext,
+				new Uint8Array([ CONTENT_TYPE_MAP[opts.contentType] ])
+			])
+		}
+
 		const { ciphertext } = await encryptWrappedRecord(
-			{
-				plaintext: opts.data,
-				contentType: connTlsVersion === 'TLS1_3'
-					? opts.contentType
-					: undefined,
-			},
+			plaintext,
 			{
 				key: keys!.clientEncKey,
 				iv: keys!.clientIv,
@@ -567,6 +587,9 @@ export function makeTLSClient({
 				iv: keys!.clientIv,
 				recordNumber: recordSendCount,
 				macKey,
+				ciphertext,
+				plaintext: opts.data,
+				contentType: opts.contentType,
 			}
 		)
 

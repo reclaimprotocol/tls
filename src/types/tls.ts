@@ -1,4 +1,4 @@
-import type { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, TLS_PROTOCOL_VERSION_MAP } from '../utils/constants'
+import type { CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, TLS_PROTOCOL_VERSION_MAP } from '../utils/constants'
 import type { Key } from './crypto'
 import { Logger } from './logger'
 import type { X509Certificate } from './x509'
@@ -18,6 +18,14 @@ export type TLSPacketContext = {
 	iv: Uint8Array
 	macKey?: Key
 	recordNumber: number
+	contentType?: keyof typeof CONTENT_TYPE_MAP
+	/**
+	 * Ciphertext of the record
+	 * includes the content type,
+	 * and authTag/MAC
+	 */
+	ciphertext: Uint8Array
+	plaintext: Uint8Array
 }
 
 export type TLSProcessContext = {

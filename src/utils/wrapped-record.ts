@@ -1,6 +1,6 @@
 import { crypto } from '../crypto'
 import { AuthenticatedSymmetricCryptoAlgorithm, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
-import { AUTH_TAG_BYTE_LENGTH, CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
+import { AUTH_TAG_BYTE_LENGTH, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { areUint8ArraysEqual, concatenateUint8Arrays, generateIV, isSymmetricCipher, padTls, toHexStringWithWhitespace, uint8ArrayToDataView, unpadTls } from './generics'
 import { PacketHeaderOptions, packPacketHeader } from './packets'
 
@@ -15,11 +15,6 @@ type WrappedRecordCipherOptions = {
 	iv: Uint8Array
 	key: Key
 } & WrappedRecordMacGenOptions
-
-type EncryptInfo = {
-	plaintext: Uint8Array
-	contentType?: keyof typeof CONTENT_TYPE_MAP
-}
 
 const AUTH_CIPHER_LENGTH = 12
 
@@ -65,11 +60,7 @@ export async function decryptWrappedRecord(
 			throw new Error(`MAC mismatch: expected ${toHexStringWithWhitespace(macComputed)}, got ${toHexStringWithWhitespace(mac)}`)
 		}
 
-		return {
-			plaintext,
-			contentType: undefined,
-			ciphertext,
-		}
+		return { plaintext }
 	}
 
 	async function doAuthCipherDecrypt(cipher: AuthenticatedSymmetricCryptoAlgorithm) {
@@ -95,7 +86,6 @@ export async function decryptWrappedRecord(
 			iv = generateIV(iv, recordNumber)
 		}
 
-
 		const authTag = encryptedData.slice(-AUTH_TAG_BYTE_LENGTH)
 		encryptedData = encryptedData.slice(0, -AUTH_TAG_BYTE_LENGTH)
 
@@ -115,22 +105,12 @@ export async function decryptWrappedRecord(
 			throw new Error('Decrypted length does not match encrypted length')
 		}
 
-		const totalLength = opts.version === 'TLS1_3'
-			// TLS 1.3 has an extra byte for content type
-			// exclude final byte (content type)
-			? plaintext.length - 1
-			: plaintext.length
-
-		return {
-			plaintext: plaintext.slice(0, totalLength),
-			contentType: plaintext.slice(totalLength, totalLength + 1)[0],
-			ciphertext: encryptedData.slice(0, totalLength),
-		}
+		return { plaintext }
 	}
 }
 
 export async function encryptWrappedRecord(
-	{ plaintext, contentType }: EncryptInfo,
+	plaintext: Uint8Array,
 	opts: WrappedRecordCipherOptions
 ) {
 	const {
@@ -141,19 +121,12 @@ export async function encryptWrappedRecord(
 	const { cipher, ivLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	let iv = opts.iv
 
-	const completePlaintext = contentType
-		? concatenateUint8Arrays([
-			plaintext,
-			new Uint8Array([ CONTENT_TYPE_MAP[contentType] ])
-		])
-		: plaintext
-
 	return isSymmetricCipher(cipher)
 		? doSymmetricEncrypt(cipher)
 		: doAuthSymmetricEncrypt(cipher)
 
 	async function doAuthSymmetricEncrypt(cipher: AuthenticatedSymmetricCryptoAlgorithm) {
-		const aead = getAead(completePlaintext.length, opts)
+		const aead = getAead(plaintext.length, opts)
 
 		// record IV is the record number as a 64-bit big-endian integer
 		const recordIvLength = AUTH_CIPHER_LENGTH - ivLength
@@ -182,7 +155,7 @@ export async function encryptWrappedRecord(
 			{
 				key,
 				iv: completeIv,
-				data: completePlaintext,
+				data: plaintext,
 				aead,
 			}
 		)
@@ -206,9 +179,9 @@ export async function encryptWrappedRecord(
 		const blockSize = 16
 		iv = padBytes(opts.iv, 16).slice(0, 16)
 
-		const mac = await computeMacTls12(completePlaintext, opts)
+		const mac = await computeMacTls12(plaintext, opts)
 		const completeData = concatenateUint8Arrays([
-			completePlaintext,
+			plaintext,
 			mac,
 		])
 		// add TLS's special padding :(
