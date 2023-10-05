@@ -27,7 +27,8 @@ export function makeTLSClient({
 	namedCurves,
 	supportedProtocolVersions,
 	write,
-	onRecvData,
+	onRead,
+	onApplicationData,
 	onSessionTicket,
 	onTlsEnd,
 	onHandshake,
@@ -144,6 +145,13 @@ export function makeTLSClient({
 			}
 
 			try {
+				onRead?.(
+					{
+						content: data,
+						header,
+					},
+					ctx,
+				)
 				await processRecord(
 					{
 						content: data,
@@ -152,7 +160,6 @@ export function makeTLSClient({
 							: undefined,
 						header,
 					},
-					ctx,
 				)
 			} catch(err) {
 				logger.error({ err }, 'error processing record')
@@ -167,7 +174,6 @@ export function makeTLSClient({
 			contentType,
 			header,
 		}: TLSPacket & { contentType?: number },
-		ctx: TLSPacketContext
 	) {
 		contentType ??= header[0]
 		if(contentType === CONTENT_TYPE_MAP.HANDSHAKE) {
@@ -355,13 +361,7 @@ export function makeTLSClient({
 			}
 		} else if(contentType === CONTENT_TYPE_MAP.APPLICATION_DATA) {
 			logger.trace({ len: record.length }, 'received application data')
-			onRecvData?.(
-				{
-					content: record,
-					header,
-				},
-				ctx
-			)
+			onApplicationData?.(record)
 		} else if(contentType === CONTENT_TYPE_MAP.ALERT) {
 			await handleAlert(record)
 		} else {

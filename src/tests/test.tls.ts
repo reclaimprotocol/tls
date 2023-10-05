@@ -1,6 +1,6 @@
 import Chance from 'chance'
 import { Socket } from 'net'
-import { TLSClientOptions, TLSPacket, TLSPresharedKey, TLSSessionTicket } from '../types'
+import { TLSClientOptions, TLSPresharedKey, TLSSessionTicket } from '../types'
 import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP } from '..'
 import { createMockTLSServer } from './mock-tls-server'
 import { delay, logger } from './utils'
@@ -43,7 +43,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 
 	const port = chance.integer({ min: 10000, max: 20000 })
 	const srv = createMockTLSServer(port)
-	const onRecvData = jest.fn<void, [TLSPacket]>()
+	const onApplicationData = jest.fn<void, [Uint8Array]>()
 
 	beforeAll(async() => {
 		await delay(200)
@@ -55,7 +55,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 	})
 
 	beforeEach(() => {
-		onRecvData.mockClear()
+		onApplicationData.mockClear()
 	})
 
 	it.each(
@@ -100,7 +100,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 			it(`should send & recv ${data.length} bytes from the server`, async() => {
 				const { tls } = conn
 				const recvDataPromise = new Promise<Uint8Array>(resolve => {
-					onRecvData.mockImplementationOnce(({ content }) => {
+					onApplicationData.mockImplementationOnce((content) => {
 						resolve(content)
 					})
 				})
@@ -150,7 +150,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 		tls.write(data)
 
 		const recvData = await new Promise<Uint8Array>(resolve => {
-			onRecvData.mockImplementationOnce(({ content }) => {
+			onApplicationData.mockImplementationOnce((content) => {
 				resolve(content)
 			})
 		})
@@ -195,7 +195,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 		await tls.write(data)
 
 		const recvData = await new Promise<Uint8Array>(resolve => {
-			onRecvData.mockImplementationOnce(({ content }) => {
+			onApplicationData.mockImplementationOnce((content) => {
 				resolve(content)
 			})
 		})
@@ -227,7 +227,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 				tlsversion
 			],
 			logger,
-			onRecvData,
+			onApplicationData,
 			async write({ header, content }) {
 				socket.write(header)
 				socket.write(content)
