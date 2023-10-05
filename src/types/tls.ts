@@ -12,10 +12,8 @@ export type TLSPacket = {
 
 export type TLSPacketContext = {
 	type: 'plaintext'
-	header: Uint8Array
 } | {
 	type: 'ciphertext'
-	header: Uint8Array
 	encKey: Key
 	iv: Uint8Array
 	macKey?: Key
