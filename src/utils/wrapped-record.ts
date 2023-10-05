@@ -6,7 +6,7 @@ import { PacketHeaderOptions, packPacketHeader } from './packets'
 
 type WrappedRecordMacGenOptions = {
 	macKey?: Key
-	recordNumber: number
+	recordNumber: number | undefined
 	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
 	version: TLSProtocolVersion
 } & ({ recordHeaderOpts: PacketHeaderOptions } | { recordHeader: Uint8Array })
@@ -80,8 +80,10 @@ export async function decryptWrappedRecord(
 		} else if(
 			// use IV generation alg for TLS 1.3
 			// and ChaCha20-Poly1305
-			opts.version === 'TLS1_3'
+			(
+				opts.version === 'TLS1_3'
 				|| cipher === 'CHACHA20-POLY1305'
+			) && typeof recordNumber !== 'undefined'
 		) {
 			iv = generateIV(iv, recordNumber)
 		}
@@ -118,7 +120,7 @@ export async function encryptWrappedRecord(
 		recordNumber,
 		cipherSuite,
 	} = opts
-	const { cipher, ivLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
+	const { cipher } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	let iv = opts.iv
 
 	return isSymmetricCipher(cipher)
@@ -129,10 +131,10 @@ export async function encryptWrappedRecord(
 		const aead = getAead(plaintext.length, opts)
 
 		// record IV is the record number as a 64-bit big-endian integer
-		const recordIvLength = AUTH_CIPHER_LENGTH - ivLength
+		const recordIvLength = AUTH_CIPHER_LENGTH - iv.length
 		let recordIv: Uint8Array | undefined
 		let completeIv = iv
-		if(recordIvLength) {
+		if(recordIvLength && typeof recordNumber !== 'undefined') {
 			recordIv = new Uint8Array(recordIvLength)
 			const seqNumberView = uint8ArrayToDataView(recordIv)
 			seqNumberView.setUint32(recordIvLength - 4, recordNumber)
@@ -144,10 +146,11 @@ export async function encryptWrappedRecord(
 		} else if(
 			// use IV generation alg for TLS 1.3
 			// and ChaCha20-Poly1305
-			opts.version === 'TLS1_3'
-				|| cipher === 'CHACHA20-POLY1305'
+			(opts.version === 'TLS1_3'
+				|| cipher === 'CHACHA20-POLY1305')
+			&& typeof recordNumber !== 'undefined'
 		) {
-			completeIv = generateIV(iv, recordNumber)
+			completeIv = generateIV(completeIv, recordNumber)
 		}
 
 		const enc = await crypto.authenticatedEncrypt(
