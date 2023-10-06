@@ -68,7 +68,6 @@ export function makeTLSClient({
 				return
 			}
 
-			let data = content
 			let contentType: keyof typeof CONTENT_TYPE_MAP | undefined
 			let ctx: TLSPacketContext = {
 				type: 'plaintext',
@@ -93,15 +92,6 @@ export function makeTLSClient({
 						macKey,
 					}
 				)
-				data = decrypted.plaintext
-				if(connTlsVersion === 'TLS1_3') {
-					// TLS 1.3 has an extra byte for content type
-					// exclude final byte (content type)
-					const contentTypeNum = data[data.length - 1]
-					contentType = Object.entries(CONTENT_TYPE_MAP)
-						.find(([, val]) => val === contentTypeNum)?.[0] as keyof typeof CONTENT_TYPE_MAP
-					data = data.slice(0, -1)
-				}
 
 				ctx = {
 					type: 'ciphertext',
@@ -115,11 +105,21 @@ export function makeTLSClient({
 					contentType,
 				}
 
+				content = decrypted.plaintext
+				if(connTlsVersion === 'TLS1_3') {
+					// TLS 1.3 has an extra byte for content type
+					// exclude final byte (content type)
+					const contentTypeNum = content[content.length - 1]
+					contentType = Object.entries(CONTENT_TYPE_MAP)
+						.find(([, val]) => val === contentTypeNum)?.[0] as keyof typeof CONTENT_TYPE_MAP
+					content = content.slice(0, -1)
+				}
+
 				logger.debug(
 					{
 						recordRecvCount,
 						contentType,
-						length: data.length,
+						length: content.length,
 					},
 					'decrypted wrapped record'
 				)
@@ -128,7 +128,7 @@ export function makeTLSClient({
 
 			onRead?.(
 				{
-					content: data,
+					content,
 					header,
 				},
 				ctx,
@@ -160,7 +160,7 @@ export function makeTLSClient({
 			try {
 				await processRecord(
 					{
-						content: data,
+						content,
 						contentType: contentType
 							? CONTENT_TYPE_MAP[contentType]
 							: undefined,
