@@ -93,6 +93,15 @@ export function makeTLSClient({
 					}
 				)
 
+				if(connTlsVersion === 'TLS1_3') {
+					// TLS 1.3 has an extra byte for content type
+					// exclude final byte (content type)
+					const contentTypeNum = decrypted
+						.plaintext[decrypted.plaintext.length - 1]
+					contentType = Object.entries(CONTENT_TYPE_MAP)
+						.find(([, val]) => val === contentTypeNum)?.[0] as keyof typeof CONTENT_TYPE_MAP
+				}
+
 				ctx = {
 					type: 'ciphertext',
 					encKey: keys!.serverEncKey,
@@ -106,12 +115,7 @@ export function makeTLSClient({
 				}
 
 				content = decrypted.plaintext
-				if(connTlsVersion === 'TLS1_3') {
-					// TLS 1.3 has an extra byte for content type
-					// exclude final byte (content type)
-					const contentTypeNum = content[content.length - 1]
-					contentType = Object.entries(CONTENT_TYPE_MAP)
-						.find(([, val]) => val === contentTypeNum)?.[0] as keyof typeof CONTENT_TYPE_MAP
+				if(contentType) {
 					content = content.slice(0, -1)
 				}
 
