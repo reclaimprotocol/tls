@@ -52,6 +52,8 @@ export type TLSConnectionOptions = {
 	cipherSuites?: (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
 	/** the named curves the client will claim it supports */
 	namedCurves?: (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
+	/** Only allow connecting via these TLS versions */
+	supportedProtocolVersions?: TLSProtocolVersion[]
 }
 
 export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {
@@ -65,8 +67,6 @@ export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {
 	expectAuthTagInWrappedRecord?: boolean
 
 	logger?: Logger
-
-	supportedProtocolVersions?: TLSProtocolVersion[]
 
 	write(packet: TLSPacket, ctx: TLSPacketContext): Promise<void>
 }
