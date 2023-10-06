@@ -106,7 +106,8 @@ export function makeTLSClient({
 				ctx = {
 					type: 'ciphertext',
 					encKey: keys!.serverEncKey,
-					iv: keys!.serverIv,
+					fixedIv: keys!.serverIv,
+					iv: decrypted.iv,
 					recordNumber: recordRecvCount,
 					macKey,
 					ciphertext: content,
@@ -566,7 +567,7 @@ export function makeTLSClient({
 			])
 		}
 
-		const { ciphertext } = await encryptWrappedRecord(
+		const { ciphertext, iv } = await encryptWrappedRecord(
 			plaintext,
 			{
 				key: keys!.clientEncKey,
@@ -589,7 +590,8 @@ export function makeTLSClient({
 			{
 				type: 'ciphertext',
 				encKey: keys!.clientEncKey,
-				iv: keys!.clientIv,
+				fixedIv: keys!.clientIv,
+				iv,
 				recordNumber: recordSendCount,
 				macKey,
 				ciphertext,

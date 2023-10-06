@@ -15,6 +15,9 @@ export type TLSPacketContext = {
 } | {
 	type: 'ciphertext'
 	encKey: Key
+	/** IV for the session. Computed at handshake */
+	fixedIv: Uint8Array
+	/** Actual IV used in the cipher process */
 	iv: Uint8Array
 	macKey?: Key
 	recordNumber: number

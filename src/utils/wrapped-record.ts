@@ -60,7 +60,7 @@ export async function decryptWrappedRecord(
 			throw new Error(`MAC mismatch: expected ${toHexStringWithWhitespace(macComputed)}, got ${toHexStringWithWhitespace(mac)}`)
 		}
 
-		return { plaintext }
+		return { plaintext, iv }
 	}
 
 	async function doAuthCipherDecrypt(cipher: AuthenticatedSymmetricCryptoAlgorithm) {
@@ -107,7 +107,7 @@ export async function decryptWrappedRecord(
 			throw new Error('Decrypted length does not match encrypted length')
 		}
 
-		return { plaintext }
+		return { plaintext, iv }
 	}
 }
 
@@ -174,7 +174,8 @@ export async function encryptWrappedRecord(
 			ciphertext: concatenateUint8Arrays([
 				enc.ciphertext,
 				enc.authTag,
-			])
+			]),
+			iv: completeIv
 		}
 	}
 
@@ -200,6 +201,7 @@ export async function encryptWrappedRecord(
 				iv,
 				result
 			]),
+			iv,
 		}
 	}
 
