@@ -1,4 +1,5 @@
 import { crypto } from '../crypto'
+import { CipherSuite } from '../types'
 import { getHash, getPrfHashAlgorithm, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
 import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_RECORD_TYPE_MAP } from './constants'
 import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
@@ -7,7 +8,7 @@ import { packWith3ByteLength, packWithLength } from './packets'
 type VerifyFinishMessageOptions = {
 	secret: Uint8Array
 	handshakeMessages: Uint8Array[]
-	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+	cipherSuite: CipherSuite
 }
 
 export async function verifyFinishMessage(

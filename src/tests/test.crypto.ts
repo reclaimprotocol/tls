@@ -97,11 +97,9 @@ describe('Crypto Tests', () => {
 
 	it('should encrypt data TLS1.2', async() => {
 		const { ciphertext } = await encryptWrappedRecord(
-			{
-				plaintext: bufferFromHexStringWithWhitespace(
-					'14 00 00 0c cf 91 96 26 f1 36 0c 53 6a aa d7 3a'
-				),
-			},
+			bufferFromHexStringWithWhitespace(
+				'14 00 00 0c cf 91 96 26 f1 36 0c 53 6a aa d7 3a'
+			),
 			{
 				key: await crypto.importKey(
 					'AES-128-CBC',

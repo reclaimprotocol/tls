@@ -1,5 +1,5 @@
 import { crypto } from '../crypto'
-import { TLSSessionTicket } from '../types'
+import { CipherSuite, TLSSessionTicket } from '../types'
 import { getHash, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
 import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { uint8ArrayToDataView } from './generics'
@@ -9,7 +9,7 @@ type GetResumableSessionTicketOptions = {
 	masterKey: Uint8Array
 	/** hello msgs without record header */
 	hellos: Uint8Array[] | Uint8Array
-	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+	cipherSuite: CipherSuite
 }
 
 export function parseSessionTicket(data: Uint8Array) {

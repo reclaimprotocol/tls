@@ -1,5 +1,5 @@
 import { crypto } from '../crypto'
-import { AuthenticatedSymmetricCryptoAlgorithm, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
+import { AuthenticatedSymmetricCryptoAlgorithm, CipherSuite, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
 import { AUTH_TAG_BYTE_LENGTH, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { areUint8ArraysEqual, concatenateUint8Arrays, generateIV, isSymmetricCipher, padTls, toHexStringWithWhitespace, uint8ArrayToDataView, unpadTls } from './generics'
 import { PacketHeaderOptions, packPacketHeader } from './packets'
@@ -7,7 +7,7 @@ import { PacketHeaderOptions, packPacketHeader } from './packets'
 type WrappedRecordMacGenOptions = {
 	macKey?: Key
 	recordNumber: number | undefined
-	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+	cipherSuite: CipherSuite
 	version: TLSProtocolVersion
 } & ({ recordHeaderOpts: PacketHeaderOptions } | { recordHeader: Uint8Array })
 

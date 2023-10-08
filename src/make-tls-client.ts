@@ -1,5 +1,5 @@
 import { packClientHello } from './utils/client-hello'
-import { CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
+import { CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
 import { computeSharedKeys, computeSharedKeysTls12, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
 import { generateFinishTls12, packClientFinishTls12, packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
 import { areUint8ArraysEqual, concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
@@ -14,7 +14,7 @@ import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
 import { crypto } from './crypto'
-import { Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSPacket, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
+import { CipherSuite, Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSPacket, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
 
 const RECORD_LENGTH_BYTES = 3
 
@@ -46,7 +46,7 @@ export function makeTLSClient({
 	let ended = false
 	let sessionId = new Uint8Array()
 	let handshakeMsgs: Uint8Array[] = []
-	let cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP | undefined = undefined
+	let cipherSuite: CipherSuite | undefined = undefined
 	let earlySecret: Uint8Array | undefined = undefined
 	let keys: SharedKeyData | undefined = undefined
 	let recordSendCount = 0

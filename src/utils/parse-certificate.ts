@@ -1,7 +1,7 @@
 import { crypto } from '../crypto'
-import type { CertificatePublicKey, Key, TLSProcessContext, X509Certificate } from '../types'
+import type { CertificatePublicKey, CipherSuite, Key, TLSProcessContext, X509Certificate } from '../types'
 import { loadX509FromDer } from '../utils/x509'
-import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
+import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
 import { getHash } from './decryption-utils'
 import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
 import { expectReadWithLength, packWithLength } from './packets'
@@ -114,7 +114,7 @@ export async function verifyCertificateSignature({
 
 export async function getSignatureDataTls13(
 	hellos: Uint8Array[] | Uint8Array,
-	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+	cipherSuite: CipherSuite
 ) {
 	const handshakeHash = await getHash(hellos, cipherSuite)
 	const content = concatenateUint8Arrays([

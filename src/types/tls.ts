@@ -5,6 +5,8 @@ import type { X509Certificate } from './x509'
 
 export type TLSProtocolVersion = keyof typeof TLS_PROTOCOL_VERSION_MAP
 
+export type CipherSuite = keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+
 export type TLSPacket = {
 	header: Uint8Array
 	content: Uint8Array

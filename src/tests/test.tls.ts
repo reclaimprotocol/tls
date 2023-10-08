@@ -1,7 +1,7 @@
 import Chance from 'chance'
 import { Socket } from 'net'
-import { TLSClientOptions, TLSPresharedKey, TLSSessionTicket } from '../types'
-import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP } from '..'
+import { CipherSuite, TLSClientOptions, TLSPresharedKey, TLSSessionTicket } from '../types'
+import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_NAMED_CURVE_MAP } from '..'
 import { createMockTLSServer } from './mock-tls-server'
 import { delay, logger } from './utils'
 
@@ -20,7 +20,7 @@ const TLS_DATA_MAP = {
 			'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384',
 			'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256',
 			'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
-		] as (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
+		] as CipherSuite[]
 	} as const,
 	'TLS1_3': {
 		NAMED_CURVES: TLS_NAMED_CURVES,
@@ -28,7 +28,7 @@ const TLS_DATA_MAP = {
 			'TLS_CHACHA20_POLY1305_SHA256',
 			'TLS_AES_256_GCM_SHA384',
 			'TLS_AES_128_GCM_SHA256'
-		] as (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
+		] as CipherSuite[]
 	} as const
 }
 

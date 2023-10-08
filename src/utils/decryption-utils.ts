@@ -1,5 +1,5 @@
 import { crypto } from '../crypto'
-import { HashAlgorithm } from '../types'
+import { CipherSuite, HashAlgorithm } from '../types'
 import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
 import { concatenateUint8Arrays, isSymmetricCipher, strToUint8Array, uint8ArrayToDataView } from './generics'
 import { packWithLength } from './packets'
@@ -9,7 +9,7 @@ type DeriveTrafficKeysOptions = {
 	/** used to derive keys when resuming session */
 	earlySecret?: Uint8Array
 
-	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+	cipherSuite: CipherSuite
 	/** list of handshake message to hash; or the hash itself */
 	hellos: Uint8Array[] | Uint8Array
 	/** type of secret; handshake or provider-data */
@@ -20,7 +20,7 @@ type DeriveTrafficKeysOptionsTls12 = {
 	preMasterSecret: Uint8Array
 	clientRandom: Uint8Array
 	serverRandom: Uint8Array
-	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+	cipherSuite: CipherSuite
 }
 
 export type SharedKeyData = Awaited<ReturnType<typeof computeSharedKeys>>
@@ -169,7 +169,7 @@ async function generateMasterSecret({
 
 export function computeUpdatedTrafficMasterSecret(
 	masterSecret: Uint8Array,
-	cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP
+	cipherSuite: CipherSuite
 ) {
 	const { hashAlgorithm, hashLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	return hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'traffic upd', new Uint8Array(), hashLength)
@@ -233,7 +233,7 @@ export async function deriveTrafficKeys({
 	}
 }
 
-export async function deriveTrafficKeysForSide(masterSecret: Uint8Array, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
+export async function deriveTrafficKeysForSide(masterSecret: Uint8Array, cipherSuite: CipherSuite) {
 	const { hashAlgorithm, keyLength, cipher, ivLength } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	const encKey = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'key', new Uint8Array(), keyLength)
 	const iv = await hkdfExtractAndExpandLabel(hashAlgorithm, masterSecret, 'iv', new Uint8Array(0), ivLength)
@@ -260,7 +260,7 @@ export async function hkdfExtractAndExpandLabel(algorithm: HashAlgorithm, secret
 	return crypto.expand(algorithm, length, key, length, hkdfLabel)
 }
 
-export async function getHash(msgs: Uint8Array[] | Uint8Array, cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
+export async function getHash(msgs: Uint8Array[] | Uint8Array, cipherSuite: CipherSuite) {
 	if(Array.isArray(msgs) && !(msgs instanceof Uint8Array)) {
 		const { hashAlgorithm } = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 		return crypto.hash(hashAlgorithm, concatenateUint8Arrays(msgs))
@@ -273,7 +273,7 @@ export async function getHash(msgs: Uint8Array[] | Uint8Array, cipherSuite: keyo
  * Get the PRF algorithm for the given cipher suite
  * Relevant for TLS 1.2
  */
-export function getPrfHashAlgorithm(cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
+export function getPrfHashAlgorithm(cipherSuite: CipherSuite) {
 	const opts = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
 	// all key derivation in TLS 1.2 uses min SHA-256
 	return ('prfHashAlgorithm' in opts)
