@@ -1,5 +1,5 @@
 import { crypto } from '../crypto'
-import { getHash, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
+import { getHash, getPrfHashAlgorithm, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
 import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_RECORD_TYPE_MAP } from './constants'
 import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
 import { packWith3ByteLength, packWithLength } from './packets'
@@ -52,10 +52,10 @@ export async function packClientFinishTls12(opts: VerifyFinishMessageOptions) {
 
 export async function generateFinishTls12(
 	type: 'client' | 'server',
-	{ secret, handshakeMessages }: VerifyFinishMessageOptions
+	{ secret, handshakeMessages, cipherSuite }: VerifyFinishMessageOptions
 ) {
 	// all key derivation in TLS 1.2 uses SHA-256
-	const hashAlgorithm = 'SHA-256'
+	const hashAlgorithm = getPrfHashAlgorithm(cipherSuite)
 	const handshakeHash = await crypto.hash(
 		hashAlgorithm,
 		concatenateUint8Arrays(handshakeMessages)

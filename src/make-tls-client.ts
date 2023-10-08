@@ -306,6 +306,8 @@ export function makeTLSClient({
 						signatureData: signatureData12,
 					})
 
+					logger.debug('verified server key share signature')
+
 					// compute shared keys
 					await processServerPubKey(keyShare)
 

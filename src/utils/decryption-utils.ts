@@ -37,7 +37,7 @@ export async function computeSharedKeysTls12(opts: DeriveTrafficKeysOptionsTls12
 	} = opts
 	const masterSecret = await generateMasterSecret(opts)
 	// all key derivation in TLS 1.2 uses SHA-256
-	const hashAlgorithm = 'SHA-256'
+	const hashAlgorithm = getPrfHashAlgorithm(cipherSuite)
 
 	const {
 		keyLength,
@@ -124,10 +124,11 @@ export async function computeSharedKeysTls12(opts: DeriveTrafficKeysOptionsTls12
 async function generateMasterSecret({
 	preMasterSecret,
 	clientRandom,
-	serverRandom
+	serverRandom,
+	cipherSuite
 }: DeriveTrafficKeysOptionsTls12) {
 	// all key derivation in TLS 1.2 uses SHA-256
-	const hashAlgorithm = 'SHA-256'
+	const hashAlgorithm = getPrfHashAlgorithm(cipherSuite)
 	const preMasterKey = await crypto
 		.importKey(hashAlgorithm, preMasterSecret)
 	const seed = concatenateUint8Arrays([
@@ -266,4 +267,16 @@ export async function getHash(msgs: Uint8Array[] | Uint8Array, cipherSuite: keyo
 	}
 
 	return msgs
+}
+
+/**
+ * Get the PRF algorithm for the given cipher suite
+ * Relevant for TLS 1.2
+ */
+export function getPrfHashAlgorithm(cipherSuite: keyof typeof SUPPORTED_CIPHER_SUITE_MAP) {
+	const opts = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
+	// all key derivation in TLS 1.2 uses min SHA-256
+	return ('prfHashAlgorithm' in opts)
+		? opts.prfHashAlgorithm
+		: opts.hashAlgorithm
 }

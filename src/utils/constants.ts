@@ -88,6 +88,22 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 		hashAlgorithm: 'SHA-256',
 		cipher: 'AES-128-GCM',
 	},
+	TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384: {
+		identifier: new Uint8Array([ 0xc0, 0x30 ]),
+		keyLength: 32,
+		hashLength: 48,
+		ivLength: 4,
+		hashAlgorithm: 'SHA-384',
+		cipher: 'AES-256-GCM',
+	},
+	TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384: {
+		identifier: new Uint8Array([ 0xc0, 0x2c ]),
+		keyLength: 32,
+		hashLength: 48,
+		ivLength: 4,
+		hashAlgorithm: 'SHA-384',
+		cipher: 'AES-256-GCM',
+	},
 	TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256: {
 		identifier: new Uint8Array([ 0xcc, 0xa8 ]),
 		keyLength: 32,
@@ -110,6 +126,7 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 		hashLength: 20,
 		ivLength: 16,
 		hashAlgorithm: 'SHA-1',
+		prfHashAlgorithm: 'SHA-256',
 		cipher: 'AES-128-CBC',
 	},
 	TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA: {
@@ -118,6 +135,7 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 		hashLength: 20,
 		ivLength: 16,
 		hashAlgorithm: 'SHA-1',
+		prfHashAlgorithm: 'SHA-256',
 		cipher: 'AES-128-CBC',
 	},
 } as const
