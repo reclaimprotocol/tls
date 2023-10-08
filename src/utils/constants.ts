@@ -45,6 +45,11 @@ export const AUTH_TAG_BYTE_LENGTH = 16
 
 export const SUPPORTED_NAMED_CURVES = Object.keys(SUPPORTED_NAMED_CURVE_MAP) as (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
 
+/**
+ * Supported cipher suites.
+ * In a client hello, these are sent in order of preference
+ * as listed below
+ */
 export const SUPPORTED_CIPHER_SUITE_MAP = {
 	// TLS 1.3 --------------------
 	TLS_CHACHA20_POLY1305_SHA256: {
@@ -72,6 +77,22 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 		cipher: 'AES-128-GCM',
 	},
 	// TLS 1.2 -------------------
+	TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256: {
+		identifier: new Uint8Array([ 0xcc, 0xa8 ]),
+		keyLength: 32,
+		hashLength: 32,
+		ivLength: 12,
+		hashAlgorithm: 'SHA-256',
+		cipher: 'CHACHA20-POLY1305',
+	},
+	TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256: {
+		identifier: new Uint8Array([ 0xcc, 0xa9 ]),
+		keyLength: 32,
+		hashLength: 32,
+		ivLength: 12,
+		hashAlgorithm: 'SHA-256',
+		cipher: 'CHACHA20-POLY1305',
+	},
 	TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256: {
 		identifier: new Uint8Array([ 0xc0, 0x2f ]),
 		keyLength: 16,
@@ -103,22 +124,6 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 		ivLength: 4,
 		hashAlgorithm: 'SHA-384',
 		cipher: 'AES-256-GCM',
-	},
-	TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256: {
-		identifier: new Uint8Array([ 0xcc, 0xa8 ]),
-		keyLength: 32,
-		hashLength: 32,
-		ivLength: 12,
-		hashAlgorithm: 'SHA-256',
-		cipher: 'CHACHA20-POLY1305',
-	},
-	TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256: {
-		identifier: new Uint8Array([ 0xcc, 0xa9 ]),
-		keyLength: 32,
-		hashLength: 32,
-		ivLength: 12,
-		hashAlgorithm: 'SHA-256',
-		cipher: 'CHACHA20-POLY1305',
 	},
 	TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA: {
 		identifier: new Uint8Array([ 0xc0, 0x13 ]),
