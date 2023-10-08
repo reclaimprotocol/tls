@@ -102,6 +102,14 @@ export const crypto: Crypto = {
 				hash: 'SHA-256'
 			}
 			break
+		case 'RSA-PKCS1-SHA512':
+			keyType = 'spki'
+			keyUsages = ['verify']
+			subtleArgs = {
+				name: 'RSASSA-PKCS1-v1_5',
+				hash: 'SHA-512'
+			}
+			break
 		case 'ECDSA-SECP256R1-SHA256':
 			keyType = 'spki'
 			keyUsages = ['verify']
@@ -289,6 +297,12 @@ export const crypto: Crypto = {
 			verifyArgs = {
 				name: 'RSA-PSS',
 				saltLength: 32
+			}
+			break
+		case 'RSA-PKCS1-SHA512':
+			verifyArgs = {
+				name: 'RSASSA-PKCS1-v1_5',
+				hash: 'SHA-512'
 			}
 			break
 		case 'ECDSA-SECP256R1-SHA256':
