@@ -1,5 +1,5 @@
 import { crypto } from '../crypto'
-import { CipherSuite, Key, TLSPresharedKey, TLSProtocolVersion } from '../types'
+import { Key, TLSHelloBaseOptions, TLSPresharedKey, TLSProtocolVersion } from '../types'
 import { getHash } from '../utils/decryption-utils'
 import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from './constants'
 import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
@@ -7,16 +7,16 @@ import { packWith3ByteLength, packWithLength } from './packets'
 
 type SupportedNamedCurve = keyof typeof SUPPORTED_NAMED_CURVE_MAP
 
+type SupportedSignatureAlgorithm = keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP
+
 type PublicKeyData = { type: SupportedNamedCurve, key: Key }
 
-type ClientHelloOptions = {
+type ClientHelloOptions = TLSHelloBaseOptions & {
 	host: string
 	keysToShare: PublicKeyData[]
 	random?: Uint8Array
 	sessionId?: Uint8Array
 	psk?: TLSPresharedKey
-	cipherSuites?: CipherSuite[]
-	supportedProtocolVersions?: TLSProtocolVersion[]
 }
 
 type ExtensionData = {
@@ -40,13 +40,16 @@ export async function packClientHello({
 	keysToShare,
 	psk,
 	cipherSuites,
-	supportedProtocolVersions
+	supportedProtocolVersions,
+	signatureAlgorithms
 }: ClientHelloOptions) {
 	// generate random & sessionId if not provided
 	random ||= crypto.randomBytes(32)
 	sessionId ||= crypto.randomBytes(32)
 	supportedProtocolVersions ||= Object
 		.keys(TLS_PROTOCOL_VERSION_MAP) as TLSProtocolVersion[]
+	signatureAlgorithms ||= Object
+		.keys(SUPPORTED_SIGNATURE_ALGS_MAP) as SupportedSignatureAlgorithm[]
 
 	const packedSessionId = packWithLength(sessionId).slice(1)
 	const cipherSuiteList = (cipherSuites || Object.keys(SUPPORTED_CIPHER_SUITE_MAP))
@@ -61,7 +64,7 @@ export async function packClientHello({
 		),
 		packSessionTicketExtension(),
 		packVersionsExtension(supportedProtocolVersions),
-		packSignatureAlgorithmsExtension(),
+		packSignatureAlgorithmsExtension(signatureAlgorithms),
 		packPresharedKeyModeExtension(),
 		await packKeyShareExtension(keysToShare),
 		RENEGOTIATION_INFO
@@ -170,12 +173,13 @@ function packVersionsExtension(supportedVersions: TLSProtocolVersion[]) {
 	})
 }
 
-function packSignatureAlgorithmsExtension() {
+function packSignatureAlgorithmsExtension(
+	algs: SupportedSignatureAlgorithm[]
+) {
 	return packExtension({
 		type: 'SIGNATURE_ALGS',
 		data: concatenateUint8Arrays(
-			Object.values(SUPPORTED_SIGNATURE_ALGS_MAP)
-				.map(v => v.identifier)
+			algs.map(v => SUPPORTED_SIGNATURE_ALGS_MAP[v].identifier)
 		)
 	})
 }

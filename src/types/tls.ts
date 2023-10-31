@@ -1,4 +1,4 @@
-import type { CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, TLS_PROTOCOL_VERSION_MAP } from '../utils/constants'
+import type { CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from '../utils/constants'
 import type { Key } from './crypto'
 import { Logger } from './logger'
 import type { X509Certificate } from './x509'
@@ -37,7 +37,21 @@ export type TLSProcessContext = {
 	version: TLSProtocolVersion
 }
 
-export type TLSConnectionOptions = {
+export type TLSHelloBaseOptions = {
+	/** Only allow connecting via these TLS versions */
+	supportedProtocolVersions?: TLSProtocolVersion[]
+	/** the cipher suites the client will claim it supports */
+	cipherSuites?: (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
+	/** the named curves the client will claim it supports */
+	namedCurves?: (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
+	/**
+	 * the signature algorithms the client will claim it supports
+	 * Only used in TLS 1.3
+	 */
+	signatureAlgorithms?: (keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP)[]
+}
+
+export type TLSConnectionOptions = TLSHelloBaseOptions & {
 	/**
 	 * if true, an out of band PSK (pre-shared key)
 	 * will be generated before connecting via the verifier node
@@ -53,12 +67,6 @@ export type TLSConnectionOptions = {
 	 * if provided, the server certificate will be verified against these root CAs
 	 */
 	rootCAs?: X509Certificate[]
-	/** the cipher suites the client will claim it supports */
-	cipherSuites?: (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
-	/** the named curves the client will claim it supports */
-	namedCurves?: (keyof typeof SUPPORTED_NAMED_CURVE_MAP)[]
-	/** Only allow connecting via these TLS versions */
-	supportedProtocolVersions?: TLSProtocolVersion[]
 }
 
 export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {

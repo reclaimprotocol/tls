@@ -120,6 +120,14 @@ export const crypto: Crypto = {
 				namedCurve: 'P-256',
 			}
 			break
+		case 'ECDSA-SECP384R1-SHA384':
+			keyType = 'spki'
+			keyUsages = ['verify']
+			subtleArgs = {
+				name: 'ECDSA',
+				namedCurve: 'P-384',
+			}
+			break
 		default:
 			throw new Error(`Unsupported algorithm ${alg}`)
 		}
@@ -312,6 +320,13 @@ export const crypto: Crypto = {
 			verifyArgs = {
 				name: 'ECDSA',
 				hash: 'SHA-256',
+			}
+			break
+		case 'ECDSA-SECP384R1-SHA384':
+			signature = convertASN1toRS(signature)
+			verifyArgs = {
+				name: 'ECDSA',
+				hash: 'SHA-384',
 			}
 			break
 		default:
