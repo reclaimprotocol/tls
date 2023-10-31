@@ -1,3 +1,5 @@
+import { ECDSASigValue } from '@peculiar/asn1-ecc'
+import { AsnParser } from '@peculiar/asn1-schema'
 import { ChaCha20Poly1305 } from '@stablelib/chacha20poly1305'
 import type { webcrypto as WebCrypto } from 'crypto'
 import { AsymmetricCryptoAlgorithm, Crypto, Key } from '../types/crypto'
@@ -383,40 +385,21 @@ function toUint8Array(buffer: ArrayBuffer) {
 
 // mostly from ChatGPT
 function convertASN1toRS(signatureBytes: Uint8Array) {
-	// Check if the signature is in the expected ASN.1 format (SEQUENCE)
-	if(signatureBytes[0] !== 0x30) {
-		throw new Error('Invalid ASN.1 signature format.')
-	}
-
-	// Get the lengths of the r and s components
-	const rLength = signatureBytes[3]
-	const sLength = signatureBytes[5 + rLength]
-
-	// Extract the r and s components from the signature
-	const rStart = 4
-	const rEnd = rStart + rLength
-	const sStart = rEnd + 2
-	const sEnd = sStart + sLength
-
-	// Create separate r and s arrays
-	let r = signatureBytes.slice(rStart, rEnd)
-	let s = signatureBytes.slice(sStart, sEnd)
-	r = cleanBigNum(r)
-	s = cleanBigNum(s)
-
+	const data = AsnParser.parse(signatureBytes, ECDSASigValue)
+	const r = cleanBigNum(new Uint8Array(data.r))
+	const s = cleanBigNum(new Uint8Array(data.s))
 	return concatenateUint8Arrays([ r, s ])
 }
 
 function cleanBigNum(bn: Uint8Array) {
-	// Trim leading zeros
-	if(bn[0] === 0x00) {
-		return bn.slice(1)
+	if(bn.length > 32 && bn[0] === 0) {
+		bn = bn.slice(1)
+	} else if(bn.length < 32) {
+		bn = concatenateUint8Arrays([
+			new Uint8Array(32 - bn.length).fill(0),
+			bn
+		])
 	}
-
-	bn = concatenateUint8Arrays([
-		new Uint8Array(32 - bn.length).fill(0),
-		bn
-	])
 
 	return bn
 }
