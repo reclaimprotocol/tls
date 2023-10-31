@@ -26,6 +26,7 @@ export function makeTLSClient({
 	cipherSuites,
 	namedCurves,
 	supportedProtocolVersions,
+	signatureAlgorithms,
 	write,
 	onRead,
 	onApplicationData,
@@ -61,122 +62,117 @@ export function makeTLSClient({
 	let handshakePacketStream = new Uint8Array()
 	let clientCertificateRequested = false
 
-	const processPacket: ProcessPacket = (type, { header, content }) => {
-		return enqueueServerPacket(async() => {
-			if(ended) {
-				logger.warn('connection closed, ignoring packet')
-				return
-			}
+	const processPacketUnsafe: ProcessPacket = async(type, { header, content }) => {
+		if(ended) {
+			logger.warn('connection closed, ignoring packet')
+			return
+		}
 
-			let contentType: keyof typeof CONTENT_TYPE_MAP | undefined
-			let ctx: TLSPacketContext = {
-				type: 'plaintext',
-			}
-			// if the cipher spec has changed,
-			// the data will be encrypted, so
-			// we need to decrypt the packet
-			if(cipherSpecChanged || type === PACKET_TYPE.WRAPPED_RECORD) {
-				logger.trace('recv wrapped record')
-				const macKey = 'serverMacKey' in keys!
-					? keys.serverMacKey
-					: undefined
-				const decrypted = await decryptWrappedRecord(
-					content,
-					{
-						key: keys!.serverEncKey,
-						iv: keys!.serverIv,
-						recordHeader: header,
-						recordNumber: recordRecvCount,
-						cipherSuite: cipherSuite!,
-						version: connTlsVersion!,
-						macKey,
-					}
-				)
-
-				if(connTlsVersion === 'TLS1_3') {
-					// TLS 1.3 has an extra byte for content type
-					// exclude final byte (content type)
-					const contentTypeNum = decrypted
-						.plaintext[decrypted.plaintext.length - 1]
-					contentType = Object.entries(CONTENT_TYPE_MAP)
-						.find(([, val]) => val === contentTypeNum)?.[0] as keyof typeof CONTENT_TYPE_MAP
-				}
-
-				ctx = {
-					type: 'ciphertext',
-					encKey: keys!.serverEncKey,
-					fixedIv: keys!.serverIv,
-					iv: decrypted.iv,
-					recordNumber: recordRecvCount,
-					macKey,
-					ciphertext: content,
-					plaintext: decrypted.plaintext,
-					contentType,
-				}
-
-				content = decrypted.plaintext
-				if(contentType) {
-					content = content.slice(0, -1)
-				}
-
-				logger.debug(
-					{
-						recordRecvCount,
-						contentType,
-						length: content.length,
-					},
-					'decrypted wrapped record'
-				)
-				recordRecvCount += 1
-			}
-
-			onRead?.(
+		let contentType: keyof typeof CONTENT_TYPE_MAP | undefined
+		let ctx: TLSPacketContext = { type: 'plaintext' }
+		// if the cipher spec has changed,
+		// the data will be encrypted, so
+		// we need to decrypt the packet
+		if(cipherSpecChanged || type === PACKET_TYPE.WRAPPED_RECORD) {
+			logger.trace('recv wrapped record')
+			const macKey = 'serverMacKey' in keys!
+				? keys.serverMacKey
+				: undefined
+			const decrypted = await decryptWrappedRecord(
+				content,
 				{
-					content,
-					header,
-				},
-				ctx,
+					key: keys!.serverEncKey,
+					iv: keys!.serverIv,
+					recordHeader: header,
+					recordNumber: recordRecvCount,
+					cipherSuite: cipherSuite!,
+					version: connTlsVersion!,
+					macKey,
+				}
 			)
 
-			if(
-				type === PACKET_TYPE.WRAPPED_RECORD
-				|| type === PACKET_TYPE.HELLO
-			) {
-				// do nothing -- pass through
-			} else if(type === PACKET_TYPE.CHANGE_CIPHER_SPEC) {
-				logger.debug('received change cipher spec')
-				cipherSpecChanged = true
-				return
-			} else if(type === PACKET_TYPE.ALERT) {
-				await handleAlert(content)
-				return
-			} else {
-				logger.warn(
-					{
-						type: type.toString(16),
-						chunk: toHexStringWithWhitespace(content)
-					},
-					'cannot process message'
-				)
-				return
+			if(connTlsVersion === 'TLS1_3') {
+				// TLS 1.3 has an extra byte suffixed
+				// this denotes the content type of the
+				// packet
+				const contentTypeNum = decrypted
+					.plaintext[decrypted.plaintext.length - 1]
+				contentType = Object.entries(CONTENT_TYPE_MAP)
+					.find(([, val]) => val === contentTypeNum)?.[0] as keyof typeof CONTENT_TYPE_MAP
 			}
 
-			try {
-				await processRecord(
-					{
-						content,
-						contentType: contentType
-							? CONTENT_TYPE_MAP[contentType]
-							: undefined,
-						header,
-					},
-				)
-			} catch(err) {
-				logger.error({ err }, 'error processing record')
-				end(err)
+			ctx = {
+				type: 'ciphertext',
+				encKey: keys!.serverEncKey,
+				fixedIv: keys!.serverIv,
+				iv: decrypted.iv,
+				recordNumber: recordRecvCount,
+				macKey,
+				ciphertext: content,
+				plaintext: decrypted.plaintext,
+				contentType,
 			}
-		})
+
+			content = decrypted.plaintext
+			if(contentType) {
+				content = content.slice(0, -1)
+			}
+
+			logger.debug(
+				{
+					recordRecvCount,
+					contentType,
+					length: content.length,
+				},
+				'decrypted wrapped record'
+			)
+			recordRecvCount += 1
+		}
+
+		onRead?.({ content, header }, ctx)
+
+		if(
+			type === PACKET_TYPE.WRAPPED_RECORD
+			|| type === PACKET_TYPE.HELLO
+		) {
+			// do nothing -- pass through
+		} else if(type === PACKET_TYPE.CHANGE_CIPHER_SPEC) {
+			logger.debug('received change cipher spec')
+			cipherSpecChanged = true
+			return
+		} else if(type === PACKET_TYPE.ALERT) {
+			await handleAlert(content)
+			return
+		} else {
+			logger.warn(
+				{
+					type: type.toString(16),
+					chunk: toHexStringWithWhitespace(content)
+				},
+				'cannot process message'
+			)
+			return
+		}
+
+		try {
+			await processRecord(
+				{
+					content,
+					contentType: contentType
+						? CONTENT_TYPE_MAP[contentType]
+						: undefined,
+					header,
+				},
+			)
+		} catch(err) {
+			logger.error({ err }, 'error processing record')
+			end(err)
+		}
 	}
+
+	const processPacket: ProcessPacket = (...args) => (
+		enqueueServerPacket(processPacketUnsafe, ...args)
+	)
 
 	async function processRecord(
 		{
@@ -188,8 +184,8 @@ export function makeTLSClient({
 		contentType ??= header[0]
 		if(contentType === CONTENT_TYPE_MAP.HANDSHAKE) {
 			handshakePacketStream = concatenateUint8Arrays([ handshakePacketStream, record ])
-			let data = readPacket()
-			while(data) {
+			let data: ReturnType<typeof readPacket>
+			while(data = readPacket()) {
 				const { type, content } = data
 				switch (type) {
 				case SUPPORTED_RECORD_TYPE_MAP.SERVER_HELLO:
@@ -221,9 +217,11 @@ export function makeTLSClient({
 					logger.debug({ len: content.length }, 'received encrypted extensions')
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.CERTIFICATE:
-					logger.debug({ len: content.length }, 'received certificate')
+					logger.trace({ len: content.length }, 'received certificate')
 					const result = parseCertificates(content, { version: connTlsVersion! })
 					certificates = result.certificates
+
+					logger.debug({ len: certificates.length }, 'parsed certificates')
 
 					onRecvCertificates?.({ certificates })
 					break
@@ -346,8 +344,6 @@ export function makeTLSClient({
 					logger.warn({ type: type.toString(16) }, 'cannot process record')
 					break
 				}
-
-				data = readPacket()
 			}
 
 			function readPacket() {
@@ -717,7 +713,8 @@ export function makeTLSClient({
 				sessionId,
 				psk: opts?.psk,
 				cipherSuites,
-				supportedProtocolVersions
+				supportedProtocolVersions,
+				signatureAlgorithms,
 			})
 			handshakeMsgs.push(clientHello)
 
