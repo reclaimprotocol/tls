@@ -1,8 +1,8 @@
 import { packClientHello } from './utils/client-hello'
-import { CONTENT_TYPE_MAP, PACKET_TYPE, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
+import { CONTENT_TYPE_MAP, MAX_ENC_PACKET_SIZE, PACKET_TYPE, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
 import { computeSharedKeys, computeSharedKeysTls12, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
 import { generateFinishTls12, packClientFinishTls12, packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
-import { areUint8ArraysEqual, concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
+import { areUint8ArraysEqual, chunkUint8Array, concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
 import { packClientKeyShare, processServerKeyShare } from './utils/key-share'
 import { packKeyUpdateRecord } from './utils/key-update'
 import { logger as LOGGER } from './utils/logger'
@@ -773,16 +773,19 @@ export function makeTLSClient({
 
 			logger.info('updated client traffic keys')
 		},
-		write(data: Uint8Array) {
+		async write(data: Uint8Array) {
 			if(!handshakeDone) {
 				throw new Error('Handshake not done')
 			}
 
-			return writeEncryptedPacket({
-				type: 'WRAPPED_RECORD',
-				data,
-				contentType: 'APPLICATION_DATA'
-			})
+			const chunks = chunkUint8Array(data, MAX_ENC_PACKET_SIZE)
+			for(const chunk of chunks) {
+				await writeEncryptedPacket({
+					data: chunk,
+					type: 'WRAPPED_RECORD',
+					contentType: 'APPLICATION_DATA'
+				})
+			}
 		},
 		end,
 	}

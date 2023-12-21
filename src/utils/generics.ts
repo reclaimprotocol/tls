@@ -102,3 +102,12 @@ export function isSymmetricCipher(
 ): cipher is SymmetricCryptoAlgorithm {
 	return cipher === 'AES-128-CBC'
 }
+
+export function chunkUint8Array(arr: Uint8Array, chunkSize: number) {
+	const result: Uint8Array[] = []
+	for(let i = 0; i < arr.length; i += chunkSize) {
+		result.push(arr.slice(i, i + chunkSize))
+	}
+
+	return result
+}

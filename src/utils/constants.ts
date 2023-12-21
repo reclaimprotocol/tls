@@ -1,3 +1,6 @@
+/** Max size of an encrypted packet */
+export const MAX_ENC_PACKET_SIZE = 16380
+
 export const TLS_PROTOCOL_VERSION_MAP = {
 	'TLS1_3': new Uint8Array([ 0x03, 0x04 ]),
 	'TLS1_2': new Uint8Array([ 0x03, 0x03 ]),
