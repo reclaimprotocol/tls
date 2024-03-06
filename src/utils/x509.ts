@@ -15,6 +15,13 @@ export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<pecul
 
 	return {
 		internal: cert,
+		isWithinValidity() {
+			const now = new Date()
+			return now > cert.notBefore && now < cert.notAfter
+		},
+		getSubjectField(name) {
+			return cert.subjectName.getField(name)
+		},
 		isIssuer({ internal: ofCert }) {
 			var i = ofCert.issuer
 			var s = cert.subject

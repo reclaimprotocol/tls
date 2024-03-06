@@ -9,6 +9,12 @@ export type CertificatePublicKey = Uint8Array
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type X509Certificate<T = any> = {
 	internal: T
+	/**
+	 * Checks new Date() is in the validity period
+	 * of the certificate, basically outside notBefore and notAfter
+	 */
+	isWithinValidity(): boolean
+	getSubjectField(key: string): string[]
 	isIssuer(ofCert: X509Certificate<T>): boolean
 	getPublicKey(): CertificatePublicKey
 	getPublicKeyAlgorithm(): Algorithm

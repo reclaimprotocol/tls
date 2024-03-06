@@ -426,7 +426,23 @@ JCqVJUzKoZHm1Lesh3Sz8W2jmdv51b2EQJ8HmA==
 -----END CERTIFICATE-----`)
 		]
 
-		await verifyCertificateChain(certificateChain, '')
+		await verifyCertificateChain(certificateChain, 'github.com')
+	})
+
+	it('should call out certificate not for host', async() => {
+		const certs = [
+			loadX509FromPem(`-----BEGIN CERTIFICATE-----
+MIAwgAICMDQwgAYCVR0AADAAMB4XDTE1MDExMTUwMTU7AAEXDTE4MDExMjExNDA6
+AAAwADCAMIAGByqGSM49AgEGBSuBBAAmAAADAwBmTwAAAAAwgAYFKw4DAg4MAAAD
+AwAxAAAA
+-----END CERTIFICATE-----`)
+		]
+
+		await expect(
+			verifyCertificateChain(certs, 'github.com')
+		).rejects.toThrowError(
+			'Certificate is not for host github.com'
+		)
 	})
 
 	it('should verify RSA PSS certificate signature', async() => {

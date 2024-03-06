@@ -167,8 +167,17 @@ export async function verifyCertificateChain(
 		...additionalRootCAs || []
 	]
 
+	const commonNames = chain[0].getSubjectField('CN')
+	if(!commonNames.some(cn => matchHostname(host, cn))) {
+		throw new Error(`Certificate is not for host ${host}`)
+	}
+
 	for(let i = 0; i < chain.length - 1; i++) {
 		const issuer = chain[i + 1]
+		if(!chain[i].isWithinValidity()) {
+			throw new Error(`Certificate ${i} is not within validity period`)
+		}
+
 		if(!issuer.isIssuer(chain[i])) {
 			throw new Error(`Certificate ${i} was not issued by certificate ${i + 1}`)
 		}
@@ -188,4 +197,34 @@ export async function verifyCertificateChain(
 	if(!verified) {
 		throw new Error('Root CA did not issue certificate')
 	}
+}
+
+/**
+ * Checks if a hostname matches a common name
+ * @param host the hostname, eg. "google.com"
+ * @param commonName the common name from the certificate,
+ * 	eg. "*.google.com", "google.com"
+ */
+function matchHostname(host: string, commonName: string) {
+	// write a regex to match the common name
+	// and check if it matches the hostname
+	const hostComps = host.split('.')
+	const cnComps = commonName.split('.')
+
+	if(cnComps.length !== hostComps.length) {
+		// can ignore the first component if it's a wildcard
+		if(
+			cnComps[0] === '*'
+			&& cnComps.length === hostComps.length + 1
+		) {
+			cnComps.shift()
+		} else {
+			return false
+		}
+	}
+
+	return hostComps.every((comp, i) => (
+		comp === cnComps[i]
+			|| cnComps[i] === '*'
+	))
 }

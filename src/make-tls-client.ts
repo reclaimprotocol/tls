@@ -247,6 +247,7 @@ export function makeTLSClient({
 
 					if(verifyServerCertificate) {
 						await verifyCertificateChain(certificates, host, rootCAs)
+						logger.debug('verified certificate chain')
 					}
 
 					break
