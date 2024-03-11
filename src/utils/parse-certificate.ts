@@ -1,11 +1,11 @@
 import { crypto } from '../crypto'
 import type { CertificatePublicKey, CipherSuite, Key, TLSProcessContext, X509Certificate } from '../types'
-import { loadX509FromDer } from '../utils/x509'
 import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
 import { getHash } from './decryption-utils'
 import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
 import { expectReadWithLength, packWithLength } from './packets'
 import { ROOT_CAS } from './root-ca'
+import { loadX509FromDer } from './x509'
 
 type VerifySignatureOptions = {
 	signature: Uint8Array
@@ -117,14 +117,12 @@ export async function getSignatureDataTls13(
 	cipherSuite: CipherSuite
 ) {
 	const handshakeHash = await getHash(hellos, cipherSuite)
-	const content = concatenateUint8Arrays([
+	return concatenateUint8Arrays([
 		new Uint8Array(64).fill(0x20),
 		CERT_VERIFY_TXT,
 		new Uint8Array([0]),
 		handshakeHash
 	])
-
-	return content
 }
 
 type Tls12SignatureDataOpts = {
@@ -143,7 +141,7 @@ export async function getSignatureDataTls12(
 	}: Tls12SignatureDataOpts,
 ) {
 	const publicKeyBytes = await crypto.exportKey(publicKey)
-	const msgs = concatenateUint8Arrays([
+	return concatenateUint8Arrays([
 		clientRandom,
 		serverRandom,
 		concatenateUint8Arrays([
@@ -154,7 +152,6 @@ export async function getSignatureDataTls12(
 			// pub key is packed with 1 byte length
 			.slice(1)
 	])
-	return msgs
 }
 
 export async function verifyCertificateChain(
@@ -172,8 +169,9 @@ export async function verifyCertificateChain(
 		throw new Error(`Certificate is not for host ${host}`)
 	}
 
+	let rootCert: X509Certificate = chain[0]
 	for(let i = 0; i < chain.length - 1; i++) {
-		const issuer = chain[i + 1]
+		const issuer = findIssuer(chain[i])
 		if(!chain[i].isWithinValidity()) {
 			throw new Error(`Certificate ${i} is not within validity period`)
 		}
@@ -185,17 +183,28 @@ export async function verifyCertificateChain(
 		if(!(await issuer.verifyIssued(chain[i]))) {
 			throw new Error(`Certificate ${i} issue verification failed`)
 		}
+
+		rootCert = issuer
 	}
 
-	const root = chain[chain.length - 1]
-	const rootIssuer = rootCAs.find(r => r.isIssuer(root))
+	const rootIssuer = rootCAs.find(r => r.isIssuer(rootCert))
 	if(!rootIssuer) {
 		throw new Error('Root CA not found. Could not verify certificate')
 	}
 
-	const verified = await rootIssuer.verifyIssued(root)
+	const verified = await rootIssuer.verifyIssued(rootCert)
 	if(!verified) {
 		throw new Error('Root CA did not issue certificate')
+	}
+
+	function findIssuer(cert: X509Certificate): X509Certificate {
+		for(let i = 0; i < chain.length ; i++) {
+			if(chain[i].isIssuer(cert)) {
+				return chain[i]
+			}
+		}
+
+		throw new Error(`issuer for ${cert.getSubjectField('CN')} not found`)
 	}
 }
 

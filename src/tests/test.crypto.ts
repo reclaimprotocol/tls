@@ -1,13 +1,13 @@
 import { crypto } from '../crypto'
 import { TLSPresharedKey } from '../types'
-import { computeBinderSuffix, packPresharedKeyExtension } from '../utils/client-hello'
-import { computeSharedKeys, computeSharedKeysTls12 } from '../utils/decryption-utils'
-import { toHexStringWithWhitespace } from '../utils/generics'
-import { expectReadWithLength } from '../utils/packets'
-import { getSignatureDataTls13, verifyCertificateChain, verifyCertificateSignature } from '../utils/parse-certificate'
-import { getPskFromTicket, parseSessionTicket } from '../utils/session-ticket'
-import { encryptWrappedRecord } from '../utils/wrapped-record'
-import { loadX509FromPem } from '../utils/x509'
+import { computeBinderSuffix, packPresharedKeyExtension } from '../utils'
+import { computeSharedKeys, computeSharedKeysTls12 } from '../utils'
+import { toHexStringWithWhitespace } from '../utils'
+import { expectReadWithLength } from '../utils'
+import { getSignatureDataTls13, verifyCertificateChain, verifyCertificateSignature } from '../utils'
+import { getPskFromTicket, parseSessionTicket } from '../utils'
+import { encryptWrappedRecord } from '../utils'
+import { loadX509FromPem } from '../utils'
 import { bufferFromHexStringWithWhitespace, expectBuffsEq } from './utils'
 
 const curve = 'X25519'
@@ -499,5 +499,107 @@ AwAxAAAA
 			}
 		)
 		expect(result2).toBe(true)
+	})
+
+	it('should verify certificate chain with incorrect order', async() => {
+		const certificateChain = [
+			loadX509FromPem(`-----BEGIN CERTIFICATE-----
+MIIG6DCCBdCgAwIBAgIQZ1xHfRvMPmL7XHc2XH193zANBgkqhkiG9w0BAQsFADCB
+ujELMAkGA1UEBhMCVVMxFjAUBgNVBAoTDUVudHJ1c3QsIEluYy4xKDAmBgNVBAsT
+H1NlZSB3d3cuZW50cnVzdC5uZXQvbGVnYWwtdGVybXMxOTA3BgNVBAsTMChjKSAy
+MDE0IEVudHJ1c3QsIEluYy4gLSBmb3IgYXV0aG9yaXplZCB1c2Ugb25seTEuMCwG
+A1UEAxMlRW50cnVzdCBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eSAtIEwxTTAeFw0y
+MzA0MDQwOTIyMDJaFw0yNDA0MzAwOTIyMDJaMIGUMQswCQYDVQQGEwJHQjEPMA0G
+A1UEBxMGTG9uZG9uMRMwEQYLKwYBBAGCNzwCAQMTAkpFMRUwEwYDVQQKEwxFeHBl
+cmlhbiBQTEMxHTAbBgNVBA8TFFByaXZhdGUgT3JnYW5pemF0aW9uMQ4wDAYDVQQF
+EwU5MzkwNTEZMBcGA1UEAxMQdXNhLmV4cGVyaWFuLmNvbTCCASIwDQYJKoZIhvcN
+AQEBBQADggEPADCCAQoCggEBAO8i4q2MH82f0z26g5EvHFFOEP2P0EYMpbPGAO6x
+4I+a0M2b9/kwVUqRsD6J0s57AeNwt3zFI0AXJQbYyPxkz/UGS0a/vWp+1tWYAhbh
+EJi8XJ3LuyevOHn408GYTT7O7cbSm401AnJj1jzFwgRCjPEAI0BipW5gqSV8cY0r
++80vVndCLlhq6cLEzqUvKoqlQ7x8qG38cOTgFTpEsJbgp8dGvPjwQ2bwYqDsOWNm
+aF9bFFoYTPvuQBEEdyVfFUZQmdefiSBAnVI2F/77fAPmNabBxIdjALoj0ak4dtHf
+UBOPPuZ3QtzIw3yYkDE3JFKzOamHjaakugG9W+3S0++G24MCAwEAAaOCAwwwggMI
+MAwGA1UdEwEB/wQCMAAwHQYDVR0OBBYEFNZ0EntaKwMXF9iHiyEoWvy2fHeiMB8G
+A1UdIwQYMBaAFMP30LUqMK2vDZEhcDlU3byJcMc6MGgGCCsGAQUFBwEBBFwwWjAj
+BggrBgEFBQcwAYYXaHR0cDovL29jc3AuZW50cnVzdC5uZXQwMwYIKwYBBQUHMAKG
+J2h0dHA6Ly9haWEuZW50cnVzdC5uZXQvbDFtLWNoYWluMjU2LmNlcjAzBgNVHR8E
+LDAqMCigJqAkhiJodHRwOi8vY3JsLmVudHJ1c3QubmV0L2xldmVsMW0uY3JsMBsG
+A1UdEQQUMBKCEHVzYS5leHBlcmlhbi5jb20wDgYDVR0PAQH/BAQDAgWgMB0GA1Ud
+JQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjBLBgNVHSAERDBCMDcGCmCGSAGG+mwK
+AQIwKTAnBggrBgEFBQcCARYbaHR0cHM6Ly93d3cuZW50cnVzdC5uZXQvcnBhMAcG
+BWeBDAEBMIIBfgYKKwYBBAHWeQIEAgSCAW4EggFqAWgAdgA7U3d1Pi25gE6LMFsG
+/kA7Z9hPw/THvQANLXJv4frUFwAAAYdLksSoAAAEAwBHMEUCIApXTH2cJeT14UG1
+Zl5hOq9+xKVmU8FxzK6eTpPzcM10AiEApWR1QLNDf4eqNfpE7fX7Ob3aH/eMhEpE
+TvtidQTylcQAdwDuzdBk1dsazsVct520zROiModGfLzs3sNRSFlGcR+1mwAAAYdL
+ksSaAAAEAwBIMEYCIQCHEoDqFZaWQtW70t8/gGBWvK53LBZDEbovhzVx3tqqawIh
+ALxYJyvkacO5Ia9qbB4SNfQ2Og+d3jjxGnh7W6A2w76IAHUAc9meiRtMlnigIH1H
+neayxhzQUV5xGSqMa4AQesF3crUAAAGHS5LEyQAABAMARjBEAiBm49EHlOVmTQfs
+ByiBcNM1eMy/aj896Jy/V2l+a/Rx1gIgdY9QNO8XUUsrWZH//Cbm65rT3KCrxFCC
+98nwfpo9bq0wDQYJKoZIhvcNAQELBQADggEBAAv1qnJD5Vhq8yzWjBQIoLiHnvsb
+4xlTWvpfAW0Zh6uDvbiYj+/RmkZVA4zR1vOVAQHURZhbLSvY5TaXvawGQ5Hwqgzc
+/Wtv9mlYbDtvASEQy2cTorj2U8t9NhABXo0ybzXQTJSS9ltn22++hy98V+PQhub9
+1NxyK9qRAq0ofVBMxFBllBXJ0LynAsBLj0pv1XlGnuCBJwTYHMStlS5wa8zKjfRn
+V6tH55H3tsnXT3aaeh9X+BFs/dtHMRMAVW9rtYN87hXxyRDvyQh/7iqeB4B513Hm
+Dg8Snp/9qs2RmkgfUD1F+y2FGl5zz8Crek26rszAbcnIZZ8NblmPTJiIJGU=
+-----END CERTIFICATE-----`,
+			),
+			loadX509FromPem(`-----BEGIN CERTIFICATE-----
+MIIEPjCCAyagAwIBAgIESlOMKDANBgkqhkiG9w0BAQsFADCBvjELMAkGA1UEBhMC
+VVMxFjAUBgNVBAoTDUVudHJ1c3QsIEluYy4xKDAmBgNVBAsTH1NlZSB3d3cuZW50
+cnVzdC5uZXQvbGVnYWwtdGVybXMxOTA3BgNVBAsTMChjKSAyMDA5IEVudHJ1c3Qs
+IEluYy4gLSBmb3IgYXV0aG9yaXplZCB1c2Ugb25seTEyMDAGA1UEAxMpRW50cnVz
+dCBSb290IENlcnRpZmljYXRpb24gQXV0aG9yaXR5IC0gRzIwHhcNMDkwNzA3MTcy
+NTU0WhcNMzAxMjA3MTc1NTU0WjCBvjELMAkGA1UEBhMCVVMxFjAUBgNVBAoTDUVu
+dHJ1c3QsIEluYy4xKDAmBgNVBAsTH1NlZSB3d3cuZW50cnVzdC5uZXQvbGVnYWwt
+dGVybXMxOTA3BgNVBAsTMChjKSAyMDA5IEVudHJ1c3QsIEluYy4gLSBmb3IgYXV0
+aG9yaXplZCB1c2Ugb25seTEyMDAGA1UEAxMpRW50cnVzdCBSb290IENlcnRpZmlj
+YXRpb24gQXV0aG9yaXR5IC0gRzIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC6hLZy254Ma+KZ6TABp3bqMriVQRrJ2mFOWHLP/vaCeb9zYQYKpSfYs1/T
+RU4cctZOMvJyig/3gxnQaoCAAEUesMfnmr8SVycco2gvCoe9amsOXmXzHHfV1IWN
+cCG0szLni6LVhjkCsbjSR87kyUnEO6fe+1R9V77w6G7CebI6C1XiUJgWMhNcL3hW
+wcKUs/Ja5CeanyTXxuzQmyWC48zCxEXFjJd6BmsqEZ+pCm5IO2/b1BEZQvePB7/1
+U1+cPvQXLOZprE4yTGJ36rfo5bs0vBmLrpxR57d+tVOxMyLlbc9wPBr64ptntoP0
+jaWvYkxN4FisZDQSA/i2jZRjJKRxAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAP
+BgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBRqciZ60B7vfec7aVHUbI2fkBJmqzAN
+BgkqhkiG9w0BAQsFAAOCAQEAeZ8dlsa2eT8ijYfThwMEYGprmi5ZiXMRrEPR9RP/
+jTkrwPK9T3CMqS/qF8QLVJ7UG5aYMzyorWKiAHarWWluBh1+xLlEjZivEtRh2woZ
+Rkfz6/djwUAFQKXSt/S1mja/qYh2iARVBCuch38aNzx+LaUa2NSJXsq9rD1s2G2v
+1fN2D807iDginWyTmsQ9v4IbZT+mD12q/OWyFcq1rca8PdCE6OoGcrBNOTJ4vz4R
+nAuknZoh8/CbCzB428Hch0P+vGOaysXCHMnHjf87ElgI5rY97HosTvuDls4MPGmH
+VHOkc8KT/1EQrBVUAdj8BbGJoX90g5pJ19xOe4pIb4tF9g==
+-----END CERTIFICATE-----`),
+			loadX509FromPem(`-----BEGIN CERTIFICATE-----
+MIIFLTCCBBWgAwIBAgIMYaHn0gAAAABR02amMA0GCSqGSIb3DQEBCwUAMIG+MQsw
+CQYDVQQGEwJVUzEWMBQGA1UEChMNRW50cnVzdCwgSW5jLjEoMCYGA1UECxMfU2Vl
+IHd3dy5lbnRydXN0Lm5ldC9sZWdhbC10ZXJtczE5MDcGA1UECxMwKGMpIDIwMDkg
+RW50cnVzdCwgSW5jLiAtIGZvciBhdXRob3JpemVkIHVzZSBvbmx5MTIwMAYDVQQD
+EylFbnRydXN0IFJvb3QgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkgLSBHMjAeFw0x
+NDEyMTUxNTI1MDNaFw0zMDEwMTUxNTU1MDNaMIG6MQswCQYDVQQGEwJVUzEWMBQG
+A1UEChMNRW50cnVzdCwgSW5jLjEoMCYGA1UECxMfU2VlIHd3dy5lbnRydXN0Lm5l
+dC9sZWdhbC10ZXJtczE5MDcGA1UECxMwKGMpIDIwMTQgRW50cnVzdCwgSW5jLiAt
+IGZvciBhdXRob3JpemVkIHVzZSBvbmx5MS4wLAYDVQQDEyVFbnRydXN0IENlcnRp
+ZmljYXRpb24gQXV0aG9yaXR5IC0gTDFNMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A
+MIIBCgKCAQEA0IHBOSPCsdHs91fdVSQ2kSAiSPf8ylIKsKs/M7WwhAf23056sPuY
+Ij0BrFb7cW2y7rmgD1J3q5iTvjOK64dex6qwymmPQwhqPyK/MzlG1ZTy4kwFItln
+gJHxBEoOm3yiydJs/TwJhL39axSagR3nioPvYRZ1R5gTOw2QFpi/iuInMlOZmcP7
+lhw192LtjL1JcdJDQ6Gh4yEqI3CodT2ybEYGYW8YZ+QpfrI8wcVfCR5uRE7sIZlY
+FUj0VUgqtzS0BeN8SYwAWN46lsw53GEzVc4qLj/RmWLoquY0djGqr3kplnjLgRSv
+adr7BLlZg0SqCU+01CwBnZuUMWstoc/B5QIDAQABo4IBKzCCAScwDgYDVR0PAQH/
+BAQDAgEGMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDATASBgNVHRMBAf8E
+CDAGAQH/AgEAMDMGCCsGAQUFBwEBBCcwJTAjBggrBgEFBQcwAYYXaHR0cDovL29j
+c3AuZW50cnVzdC5uZXQwMAYDVR0fBCkwJzAloCOgIYYfaHR0cDovL2NybC5lbnRy
+dXN0Lm5ldC9nMmNhLmNybDA7BgNVHSAENDAyMDAGBFUdIAAwKDAmBggrBgEFBQcC
+ARYaaHR0cDovL3d3dy5lbnRydXN0Lm5ldC9ycGEwHQYDVR0OBBYEFMP30LUqMK2v
+DZEhcDlU3byJcMc6MB8GA1UdIwQYMBaAFGpyJnrQHu995ztpUdRsjZ+QEmarMA0G
+CSqGSIb3DQEBCwUAA4IBAQC0h8eEIhopwKR47PVPG7SEl2937tTPWa+oQ5YvHVje
+pvMVWy7ZQ5xMQrkXFxGttLFBx2YMIoYFp7Qi+8VoaIqIMthx1hGOjlJ+Qgld2dnA
+DizvRGsf2yS89byxqsGK5Wbb0CTz34mmi/5e0FC6m3UAyQhKS3Q/WFOv9rihbISY
+Jnz8/DVRZZgeO2x28JkPxLkJ1YXYJKd/KsLak0tkuHB8VCnTglTVz6WUwzOeTTRn
+4Dh2ZgCN0C/GqwmqcvrOLzWJ/MDtBgO334wlV/H77yiI2YIowAQPlIFpI+CRKMVe
+1QzX1CA778n4wI+nQc1XRG5sZ2L+hN/nYNjvv9QiHg3n
+-----END CERTIFICATE-----`)
+		]
+
+		await verifyCertificateChain(certificateChain, 'usa.experian.com')
 	})
 })
