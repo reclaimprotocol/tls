@@ -1,6 +1,7 @@
 import * as peculiar from '@peculiar/x509'
+import { SubjectAlternativeNameExtension } from '@peculiar/x509'
 // not using types/index to avoid circular dependency
-import type { X509Certificate } from '../types/x509'
+import type { X509Certificate } from '../types'
 import { webcrypto } from './webcrypto'
 
 peculiar.cryptoProvider.set(webcrypto)
@@ -21,6 +22,15 @@ export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<pecul
 		},
 		getSubjectField(name) {
 			return cert.subjectName.getField(name)
+		},
+		getAlternativeDNSNames(): string[] {
+			//search for names in SubjectAlternativeNameExtension
+			const ext = cert.extensions.find(e => e.type === '2.5.29.17') //subjectAltName
+			if(ext instanceof SubjectAlternativeNameExtension) {
+				return ext.names.items.filter(n => n.type === 'dns').map(n => n.value)
+			}
+
+			return []
 		},
 		isIssuer({ internal: ofCert }) {
 			var i = ofCert.issuer

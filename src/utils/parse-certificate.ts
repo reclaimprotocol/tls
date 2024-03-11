@@ -164,7 +164,10 @@ export async function verifyCertificateChain(
 		...additionalRootCAs || []
 	]
 
-	const commonNames = chain[0].getSubjectField('CN')
+	const commonNames = [
+		...chain[0].getSubjectField('CN'),
+		...chain[0].getAlternativeDNSNames()
+	]
 	if(!commonNames.some(cn => matchHostname(host, cn))) {
 		throw new Error(`Certificate is not for host ${host}`)
 	}

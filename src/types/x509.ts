@@ -15,6 +15,7 @@ export type X509Certificate<T = any> = {
 	 */
 	isWithinValidity(): boolean
 	getSubjectField(key: string): string[]
+	getAlternativeDNSNames(): string[]
 	isIssuer(ofCert: X509Certificate<T>): boolean
 	getPublicKey(): CertificatePublicKey
 	getPublicKeyAlgorithm(): Algorithm
