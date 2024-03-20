@@ -24,6 +24,8 @@ As all the cryptography is handled by webcrypto -- running on React native requi
 - RSA-PSS-RSAE-SHA256
 - ECDSA-SECP256R1-SHA256
 - ECDSA-SECP384R1-SHA384
+- RSA-PKCS1-SHA256
+- RSA-PKCS1-SHA512
 
 ### Cipher Suites (TLS 1.3)
 - AES-128-GCM-SHA256

@@ -212,6 +212,10 @@ export const SUPPORTED_SIGNATURE_ALGS_MAP = {
 		identifier: new Uint8Array([ 0x06, 0x01 ]),
 		algorithm: 'RSA-PKCS1-SHA512'
 	},
+	RSA_PKCS1_SHA256: {
+		identifier: new Uint8Array([ 0x04, 0x01 ]),
+		algorithm: 'RSA-PKCS1-SHA256',
+	}
 } as const
 
 export const SUPPORTED_SIGNATURE_ALGS = Object.keys(SUPPORTED_SIGNATURE_ALGS_MAP) as (keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP)[]

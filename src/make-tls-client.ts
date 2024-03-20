@@ -382,6 +382,11 @@ export function makeTLSClient({
 	}
 
 	async function handleAlert(content: Uint8Array) {
+		if(ended) {
+			logger.warn('connection closed, ignoring alert')
+			return
+		}
+
 		const { level, description } = parseTlsAlert(content)
 
 		const msg = (
@@ -619,6 +624,7 @@ export function makeTLSClient({
 	}
 
 	async function end(error?: Error) {
+		ended = true
 		await enqueueServerPacket(() => { })
 		handshakeDone = false
 		handshakeMsgs = []
@@ -632,7 +638,6 @@ export function makeTLSClient({
 		serverRandom = undefined
 		processor.reset()
 
-		ended = true
 		onTlsEnd?.(error)
 	}
 
