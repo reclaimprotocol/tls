@@ -5,7 +5,7 @@ export const webcrypto = (() => {
 		return window.crypto
 	}
 
-	if(self.crypto !== undefined) {
+	if(typeof self !== 'undefined' && self.crypto) {
 		return self.crypto
 	}
 
