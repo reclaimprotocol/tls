@@ -58,9 +58,10 @@ export function makeTLSClient({
 	let serverRandom: Uint8Array | undefined = undefined
 	let cipherSpecChanged = false
 
-	let certificates: X509Certificate[] = []
+	let certificates: X509Certificate[] | undefined
 	let handshakePacketStream = new Uint8Array()
 	let clientCertificateRequested = false
+	let certificatesVerified = false
 
 	const processPacketUnsafe: ProcessPacket = async(type, { header, content }) => {
 		if(ended) {
@@ -231,7 +232,7 @@ export function makeTLSClient({
 
 					logger.debug({ alg: signature.algorithm }, 'parsed certificate verify')
 
-					if(!certificates.length) {
+					if(!certificates?.length) {
 						throw new Error('No certificates received')
 					}
 
@@ -248,6 +249,8 @@ export function makeTLSClient({
 					if(verifyServerCertificate) {
 						await verifyCertificateChain(certificates, host, rootCAs)
 						logger.debug('verified certificate chain')
+
+						certificatesVerified = true
 					}
 
 					break
@@ -286,6 +289,10 @@ export function makeTLSClient({
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.SERVER_KEY_SHARE:
 					logger.trace('received server key share')
+					if(!certificates?.length) {
+						throw new Error('No certificates received')
+					}
+
 					// extract pub key & signature of pub key with cert
 					const keyShare = await processServerKeyShare(content)
 					// compute signature data
@@ -306,6 +313,13 @@ export function makeTLSClient({
 					})
 
 					logger.debug('verified server key share signature')
+
+					if(verifyServerCertificate) {
+						await verifyCertificateChain(certificates, host, rootCAs)
+						logger.debug('verified certificate chain')
+
+						certificatesVerified = true
+					}
 
 					// compute shared keys
 					await processServerPubKey(keyShare)
@@ -432,6 +446,12 @@ export function makeTLSClient({
 
 	async function processServerFinish(serverFinish: Uint8Array) {
 		logger.debug('received server finish')
+
+		if(!certificatesVerified && verifyServerCertificate) {
+			throw new Error(
+				'Finish received before certificate verification'
+			)
+		}
 
 		if(connTlsVersion === 'TLS1_2') {
 			await processServerFinishTls12(serverFinish)
