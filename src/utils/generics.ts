@@ -1,4 +1,5 @@
-import { AuthenticatedSymmetricCryptoAlgorithm, SymmetricCryptoAlgorithm } from '../types'
+import { AuthenticatedSymmetricCryptoAlgorithm, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
+import { TLS_PROTOCOL_VERSION_MAP } from './constants'
 
 /**
  * Converts a buffer to a hex string with whitespace between each byte
@@ -114,4 +115,14 @@ export function chunkUint8Array(arr: Uint8Array, chunkSize: number) {
 	}
 
 	return result
+}
+
+export function getTlsVersionFromBytes(bytes: Uint8Array) {
+	const supportedV = Object.entries(TLS_PROTOCOL_VERSION_MAP)
+		.find(([, v]) => areUint8ArraysEqual(v, bytes))
+	if(!supportedV) {
+		throw new Error(`Unsupported TLS version '${bytes}'`)
+	}
+
+	return supportedV[0] as TLSProtocolVersion
 }

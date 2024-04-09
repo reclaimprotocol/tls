@@ -90,7 +90,9 @@ export async function packClientHello({
 		)
 	}
 
-	const packedExtensions = packWithLength(concatenateUint8Arrays(extensionsList))
+	const packedExtensions = packWithLength(
+		concatenateUint8Arrays(extensionsList)
+	)
 
 	const handshakeData = concatenateUint8Arrays([
 		CLIENT_VERSION,

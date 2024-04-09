@@ -190,7 +190,6 @@ export async function encryptWrappedRecord(
 		])
 		// add TLS's special padding :(
 		const padded = padTls(completeData, blockSize)
-		// console.log(padded.length, 'content ', toHexStringWithWhitespace(padded))
 		const result = await crypto.encrypt(
 			cipher as SymmetricCryptoAlgorithm,
 			{ key, iv, data: padded }

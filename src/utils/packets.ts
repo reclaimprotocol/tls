@@ -63,7 +63,8 @@ export function readWithLength(data: Uint8Array, lengthBytes = 2) {
 
 /**
  * Read a prefix of the data, that is prefixed with the length of
- * said data
+ * said data. Throws an error if the data is not long enough
+ *
  * @param data total data to read from
  * @param lengthBytes number of bytes to read the length from.
  * Default is 2 bytes

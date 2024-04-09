@@ -2,7 +2,7 @@ import { crypto } from '../crypto'
 import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_CIPHER_SUITES, SUPPORTED_NAMED_CURVE_MAP } from './constants'
 import { areUint8ArraysEqual } from './generics'
 import { expectReadWithLength } from './packets'
-import { parseExtensions } from './parse-extensions'
+import { parseServerExtensions } from './parse-extensions'
 
 export async function parseServerHello(data: Uint8Array) {
 	// header TLS version (expected to be 0x0303)
@@ -23,7 +23,7 @@ export async function parseServerHello(data: Uint8Array) {
 		throw new Error(`Unsupported compression method '${compressionMethod.toString(16)}'`)
 	}
 
-	const extensions = parseExtensions(data)
+	const extensions = parseServerExtensions(data)
 	const serverTlsVersion = extensions['SUPPORTED_VERSIONS'] || 'TLS1_2'
 	const pubKeyExt = extensions['KEY_SHARE']
 

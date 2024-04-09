@@ -22,6 +22,13 @@ export type SupportedExtensionServerData = {
 	'PRE_SHARED_KEY': { supported: boolean }
 }
 
+export type SupportedExtensionClientData = {
+	'SERVER_NAME': {
+		type: number
+		serverName: string
+	}
+}
+
 export type TLSPacketContext = {
 	type: 'plaintext'
 } | {

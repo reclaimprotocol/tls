@@ -10,7 +10,7 @@ import { makeQueue } from './utils/make-queue'
 import { makeMessageProcessor, PacketOptions, packPacketHeader, packWithLength, readWithLength } from './utils/packets'
 import { parseTlsAlert } from './utils/parse-alert'
 import { getSignatureDataTls12, getSignatureDataTls13, parseCertificates, parseServerCertificateVerify, verifyCertificateChain, verifyCertificateSignature } from './utils/parse-certificate'
-import { parseExtensions } from './utils/parse-extensions'
+import { parseServerExtensions } from './utils/parse-extensions'
 import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
@@ -223,7 +223,7 @@ export function makeTLSClient({
 
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.ENCRYPTED_EXTENSIONS:
-					const extData = parseExtensions(content)
+					const extData = parseServerExtensions(content)
 					logger.debug({
 						len: content.length,
 						extData
