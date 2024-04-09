@@ -12,6 +12,16 @@ export type TLSPacket = {
 	content: Uint8Array
 }
 
+export type SupportedExtensionServerData = {
+	'ALPN': string
+	'SUPPORTED_VERSIONS': TLSProtocolVersion
+	'KEY_SHARE': {
+		type: keyof typeof SUPPORTED_NAMED_CURVE_MAP
+		publicKey: Uint8Array
+	}
+	'PRE_SHARED_KEY': { supported: boolean }
+}
+
 export type TLSPacketContext = {
 	type: 'plaintext'
 } | {

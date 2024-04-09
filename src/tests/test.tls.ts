@@ -82,7 +82,7 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 
 	it('should specify ALPN', async() => {
 		const supportedAlpn = 'http/1.1'
-		const alpn = [supportedAlpn, 'http/4']
+		const alpn = ['http/4', supportedAlpn]
 		const { tls, socket } = connectTLS({ applicationLayerProtocols: alpn })
 
 		while(!tls.isHandshakeDone()) {

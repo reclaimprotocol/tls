@@ -10,6 +10,7 @@ import { makeQueue } from './utils/make-queue'
 import { makeMessageProcessor, PacketOptions, packPacketHeader, packWithLength, readWithLength } from './utils/packets'
 import { parseTlsAlert } from './utils/parse-alert'
 import { getSignatureDataTls12, getSignatureDataTls13, parseCertificates, parseServerCertificateVerify, verifyCertificateChain, verifyCertificateSignature } from './utils/parse-certificate'
+import { parseExtensions } from './utils/parse-extensions'
 import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
@@ -202,11 +203,7 @@ export function makeTLSClient({
 					cipherSuite = hello.cipherSuite
 					connTlsVersion = hello.serverTlsVersion
 					serverRandom = hello.serverRandom
-					selectedAlpn = hello.selectedAlpn
-						|| applicationLayerProtocols?.[0]
-					if(selectedAlpn && !applicationLayerProtocols?.includes(selectedAlpn)) {
-						throw new Error(`Server selected unsupported ALPN: "${selectedAlpn}"`)
-					}
+					setAlpn(hello.extensions?.ALPN)
 
 					logger.debug(
 						{
@@ -226,8 +223,15 @@ export function makeTLSClient({
 
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.ENCRYPTED_EXTENSIONS:
-					logger.debug({ len: content.length }, 'received encrypted extensions')
+					const extData = parseExtensions(content)
+					logger.debug({
+						len: content.length,
+						extData
+					}, 'received encrypted extensions')
+					setAlpn(extData?.ALPN)
 					break
+				case SUPPORTED_RECORD_TYPE_MAP.HELLO_RETRY_REQUEST:
+					throw new Error('Hello retry not supported. Please re-establish connection')
 				case SUPPORTED_RECORD_TYPE_MAP.CERTIFICATE:
 					logger.trace({ len: content.length }, 'received certificate')
 					const result = parseCertificates(content, { version: connTlsVersion! })
@@ -403,6 +407,13 @@ export function makeTLSClient({
 				{ record: record, contentType: contentType?.toString(16) },
 				'cannot process record'
 			)
+		}
+	}
+
+	function setAlpn(alpn: string | undefined) {
+		selectedAlpn = alpn || applicationLayerProtocols?.[0]
+		if(selectedAlpn && !applicationLayerProtocols?.includes(selectedAlpn)) {
+			throw new Error(`Server selected unsupported ALPN: "${selectedAlpn}"`)
 		}
 	}
 
