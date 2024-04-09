@@ -41,7 +41,8 @@ export async function packClientHello({
 	psk,
 	cipherSuites,
 	supportedProtocolVersions,
-	signatureAlgorithms
+	signatureAlgorithms,
+	applicationLayerProtocols = []
 }: ClientHelloOptions) {
 	// generate random & sessionId if not provided
 	random ||= crypto.randomBytes(32)
@@ -72,6 +73,21 @@ export async function packClientHello({
 
 	if(psk) {
 		extensionsList.push(packPresharedKeyExtension(psk))
+	}
+
+	if(applicationLayerProtocols.length) {
+		const protocols = applicationLayerProtocols.map(alp => (
+			// 1 byte for length
+			packWithLength(strToUint8Array(alp)).slice(1)
+		))
+		extensionsList.push(
+			packExtension({
+				type: 'ALPN',
+				data: concatenateUint8Arrays(
+					protocols
+				),
+			})
+		)
 	}
 
 	const packedExtensions = packWithLength(concatenateUint8Arrays(extensionsList))

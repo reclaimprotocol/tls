@@ -53,6 +53,10 @@ export function strToUint8Array(str: string) {
 	return new TextEncoder().encode(str)
 }
 
+export function uint8ArrayToStr(arr: Uint8Array) {
+	return new TextDecoder().decode(arr)
+}
+
 export function generateIV(iv: Uint8Array, recordNumber: number) {
 	// make the recordNumber a buffer, so we can XOR with the main IV
 	// to generate the specific IV to decrypt this packet

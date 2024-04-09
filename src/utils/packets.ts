@@ -61,6 +61,13 @@ export function readWithLength(data: Uint8Array, lengthBytes = 2) {
 	return data.slice(lengthBytes, lengthBytes + length)
 }
 
+/**
+ * Read a prefix of the data, that is prefixed with the length of
+ * said data
+ * @param data total data to read from
+ * @param lengthBytes number of bytes to read the length from.
+ * Default is 2 bytes
+ */
 export function expectReadWithLength(data: Uint8Array, lengthBytes = 2) {
 	const result = readWithLength(data, lengthBytes)
 	if(!result) {

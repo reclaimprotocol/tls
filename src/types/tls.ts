@@ -49,6 +49,11 @@ export type TLSHelloBaseOptions = {
 	 * Only used in TLS 1.3
 	 */
 	signatureAlgorithms?: (keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP)[]
+	/**
+	 * Write to the application layer protocols extension.
+	 * Specify which protocols the client supports
+	 */
+	applicationLayerProtocols?: string[]
 }
 
 export type TLSConnectionOptions = TLSHelloBaseOptions & {

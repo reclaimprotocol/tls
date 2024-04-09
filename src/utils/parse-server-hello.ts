@@ -1,7 +1,7 @@
 import { crypto } from '../crypto'
 import { TLSProtocolVersion } from '../types'
 import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_CIPHER_SUITES, SUPPORTED_EXTENSION_MAP, SUPPORTED_EXTENSIONS, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, TLS_PROTOCOL_VERSION_MAP } from './constants'
-import { areUint8ArraysEqual, uint8ArrayToDataView } from './generics'
+import { areUint8ArraysEqual, uint8ArrayToDataView, uint8ArrayToStr } from './generics'
 import { expectReadWithLength } from './packets'
 
 export async function parseServerHello(data: Uint8Array) {
@@ -28,11 +28,19 @@ export async function parseServerHello(data: Uint8Array) {
 	let publicKeyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP | undefined
 	let supportsPsk = false
 	let serverTlsVersion: TLSProtocolVersion = 'TLS1_2'
+	let maxFragmentLengthBytes: number | undefined
+	let selectedAlpn: string | undefined
 
 	if(extensionsLength) {
 		while(data.length) {
 			const { type, extData } = readExtension()
 			switch (type) {
+			case 'ALPN':
+				const data = expectReadWithLength(extData)
+				const alpnBytes = expectReadWithLength(data, 1)
+				selectedAlpn = uint8ArrayToStr(alpnBytes)
+				console.log('ALPN', selectedAlpn)
+				break
 			case 'SUPPORTED_VERSIONS':
 				const supportedV = Object.entries(TLS_PROTOCOL_VERSION_MAP)
 					.find(([, v]) => areUint8ArraysEqual(v, extData))
@@ -74,6 +82,8 @@ export async function parseServerHello(data: Uint8Array) {
 		sessionId,
 		cipherSuite,
 		supportsPsk,
+		maxFragmentLengthBytes,
+		selectedAlpn,
 		...(
 			publicKey && publicKeyType
 				? {

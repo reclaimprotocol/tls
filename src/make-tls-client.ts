@@ -27,6 +27,7 @@ export function makeTLSClient({
 	namedCurves,
 	supportedProtocolVersions,
 	signatureAlgorithms,
+	applicationLayerProtocols,
 	write,
 	onRead,
 	onApplicationData,
@@ -57,6 +58,7 @@ export function makeTLSClient({
 	let clientRandom: Uint8Array | undefined = undefined
 	let serverRandom: Uint8Array | undefined = undefined
 	let cipherSpecChanged = false
+	let selectedAlpn: string | undefined
 
 	let certificates: X509Certificate[] | undefined
 	let handshakePacketStream = new Uint8Array()
@@ -200,9 +202,18 @@ export function makeTLSClient({
 					cipherSuite = hello.cipherSuite
 					connTlsVersion = hello.serverTlsVersion
 					serverRandom = hello.serverRandom
+					selectedAlpn = hello.selectedAlpn
+						|| applicationLayerProtocols?.[0]
+					if(selectedAlpn && !applicationLayerProtocols?.includes(selectedAlpn)) {
+						throw new Error(`Server selected unsupported ALPN: "${selectedAlpn}"`)
+					}
 
 					logger.debug(
-						{ cipherSuite, connTlsVersion },
+						{
+							cipherSuite,
+							connTlsVersion,
+							selectedAlpn,
+						},
 						'processed server hello'
 					)
 
@@ -679,6 +690,7 @@ export function makeTLSClient({
 				cipherSuite,
 				keyType,
 				version: connTlsVersion,
+				selectedAlpn,
 			}
 		},
 		hasEnded() {
@@ -741,6 +753,7 @@ export function makeTLSClient({
 				cipherSuites,
 				supportedProtocolVersions,
 				signatureAlgorithms,
+				applicationLayerProtocols,
 			})
 			handshakeMsgs.push(clientHello)
 

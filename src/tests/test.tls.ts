@@ -80,6 +80,27 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 		await tls.end()
 	})
 
+	it('should specify ALPN', async() => {
+		const supportedAlpn = 'http/1.1'
+		const alpn = [supportedAlpn, 'http/4']
+		const { tls, socket } = connectTLS({ applicationLayerProtocols: alpn })
+
+		while(!tls.isHandshakeDone()) {
+			await delay(100)
+
+			if(socket.readableEnded) {
+				throw new Error('unexpectedly terminated')
+			}
+		}
+
+		socket.end()
+
+		expect(tls.getMetadata().selectedAlpn)
+			.toEqual(supportedAlpn)
+
+		await tls.end()
+	})
+
 	describe.each(
 		TLS_DATA_MAP[tlsversion].CIPHER_SUITES
 	)('[%s] Data Exchange', (cipher) => {

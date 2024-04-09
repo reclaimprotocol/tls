@@ -11,10 +11,14 @@ export function createMockTLSServer(
 	const options: TlsOptions = {
 		key: readFileSync('./cert/private-key.pem'),
 		cert: readFileSync('./cert/public-cert.pem'),
+		ALPNProtocols: [
+			'http/1.1',
+		],
 		...tlsOpts
 	}
 
 	const server = createServer(options, socket => {
+		console.log('new connection', socket.alpnProtocol)
 		socket.on('data', data => {
 			console.log('recv record from client ', data)
 			// write back same data

@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es2018",
+    "target": "es2022",
     "module": "commonjs",
     "allowJs": true,
     "checkJs": false,
@@ -13,7 +13,7 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "resolveJsonModule": true,
-    "lib": [ "es2020", "DOM" ]
+    "lib": [ "es2022", "DOM" ]
   },
   "include": [
     "src/*.ts", 
