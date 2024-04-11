@@ -122,7 +122,7 @@ export function makeTLSClient({
 				content = content.slice(0, -1)
 			}
 
-			logger.debug(
+			logger.trace(
 				{
 					recordRecvCount,
 					contentType,
