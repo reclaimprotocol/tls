@@ -172,22 +172,35 @@ export async function verifyCertificateChain(
 		throw new Error(`Certificate is not for host ${host}`)
 	}
 
-	let rootCert: X509Certificate = chain[0]
-	for(let i = 0; i < chain.length - 1; i++) {
-		const issuer = findIssuer(chain[i])
-		if(!chain[i].isWithinValidity()) {
-			throw new Error(`Certificate ${i} is not within validity period`)
+
+	let tmpChain = [...chain]
+	let rootCert = tmpChain.shift()!
+	// look for issuers until we hit the end
+	while (tmpChain.length) {
+		const cn = rootCert.getSubjectField('CN')
+		const issuer = findIssuer(tmpChain, rootCert)
+
+		//in case there are orphan certificates in chain, but we found the root
+		if (!issuer){
+			break
 		}
 
-		if(!issuer.isIssuer(chain[i])) {
-			throw new Error(`Certificate ${i} was not issued by certificate ${i + 1}`)
+		if(!rootCert.isWithinValidity()) {
+			throw new Error(`Certificate ${cn} is not within validity period`)
 		}
 
-		if(!(await issuer.verifyIssued(chain[i]))) {
-			throw new Error(`Certificate ${i} issue verification failed`)
+		if(!issuer.cert.isIssuer(rootCert)) {
+			throw new Error(`Certificate ${cn} was not issued by certificate ${issuer.cert.getSubjectField('CN')}`)
 		}
 
-		rootCert = issuer
+		if(!(await issuer.cert.verifyIssued(rootCert))) {
+			throw new Error(`Certificate ${cn} issue verification failed`)
+		}
+
+		//remove issuer cert from chain
+		tmpChain.splice(issuer.index, 1);
+
+		rootCert = issuer.cert
 	}
 
 	const rootIssuer = rootCAs.find(r => r.isIssuer(rootCert))
@@ -200,14 +213,14 @@ export async function verifyCertificateChain(
 		throw new Error('Root CA did not issue certificate')
 	}
 
-	function findIssuer(cert: X509Certificate): X509Certificate {
+	function findIssuer(chain:X509Certificate[], cert: X509Certificate) {
 		for(let i = 0; i < chain.length ; i++) {
 			if(chain[i].isIssuer(cert)) {
-				return chain[i]
+				return {cert: chain[i], index: i}
 			}
 		}
 
-		throw new Error(`issuer for ${cert.getSubjectField('CN')} not found`)
+		return null
 	}
 }
 
