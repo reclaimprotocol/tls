@@ -58,14 +58,14 @@ npm i git+https://gitlab.reclaimprotocol.org/Reclaim/tls
 ## Example Usage
 
 ``` ts
-import { makeTlsClient } from '@reclaimprotocol/tls'
 import { Socket } from 'net'
+import { makeTLSClient, uint8ArrayToStr } from '@reclaimprotocol/tls'
 
 const socket = new Socket()
 const host = 'www.google.com'
 const port = 443
 
-const tlsClient = makeTlsClient({
+const tls = makeTLSClient({
 	host,
 	// verify the server's certificate
 	// disable when using self-signed certificates
@@ -75,26 +75,23 @@ const tlsClient = makeTlsClient({
 	// only use the following cipher suites
 	// leave undefined to use all supported cipher suites
 	cipherSuites: [
-		'CHACHA20-POLY1305-SHA256',
+		'TLS_CHACHA20_POLY1305_SHA256'
 		// ... other suites
 	],
 	// write raw bytes to the socket
-	async write({ header, content, authTag }) {
+	async write({ header, content }) {
 		socket.write(header)
 		socket.write(content)
-		// auth tag is present for encrypted messages
-		if(authTag) {
-			socket.write(authTag)
-		}
-	},
-	// handle any received data
-	onRecvData(plaintext) {
-		console.log('received data: ', plaintext)
 	},
 	onHandshake() {
 		console.log('handshake completed successfully')
 		// write encrypted data to the socket
-		tls.write('hello world')
+		const getReq = `GET / HTTP/1.1\r\nHost: ${host}\r\n\r\n`
+		tls.write(Buffer.from(getReq))
+	},
+	onApplicationData(plaintext) {
+		const str = uint8ArrayToStr(plaintext)
+		console.log('received application data: ', str)
 	},
 	onTlsEnd(error) {
 		console.error('TLS connect ended: ', error)
@@ -104,7 +101,7 @@ const tlsClient = makeTlsClient({
 socket.on('data', tls.handleReceivedBytes)
 
 // start handshake as soon as the socket connects
-socket.on('connect', () => tls.startHandshake({ psk }))
+socket.on('connect', () => tls.startHandshake())
 
 // use the TCP socket to connect to the server
 socket.connect({ host, port })
