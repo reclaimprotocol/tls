@@ -17,22 +17,22 @@
 		"lib/*"
 	],
 	"dependencies": {
-		"@peculiar/asn1-ecc": "^2.3.8",
-		"@peculiar/asn1-schema": "^2.3.8",
-		"@peculiar/x509": "^1.9.5",
+		"@peculiar/asn1-ecc": "^2.3.13",
+		"@peculiar/asn1-schema": "^2.3.13",
+		"@peculiar/x509": "^1.12.1",
 		"@stablelib/chacha20poly1305": "^1.0.1"
 	},
 	"devDependencies": {
 		"@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",
-		"@types/chance": "^1.1.5",
-		"@types/jest": "^29.5.6",
-		"@types/node": "^20.0.0",
-		"chance": "^1.1.11",
-		"eslint": "^8.52.0",
+		"@types/chance": "^1.1.6",
+		"@types/jest": "^29.5.12",
+		"@types/node": "^20.16.1",
+		"chance": "^1.1.12",
+		"eslint": "^9.9.0",
 		"jest": "^29.7.0",
-		"pino": "^8.16.1",
-		"ts-jest": "^29.1.1",
-		"ts-node": "^10.9.1",
+		"pino": "^9.3.2",
+		"ts-jest": "^29.2.4",
+		"ts-node": "^10.9.2",
 		"typescript": "^4.9.5"
 	}
 }
