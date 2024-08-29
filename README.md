@@ -52,7 +52,7 @@ Note: AES-CBC only works correctly on NodeJs.
 
 Edge version:
 ``` sh
-npm i git+https://gitlab.reclaimprotocol.org/Reclaim/tls
+npm i git+https://github.com/reclaimprotocol/tls
 ```
 
 ## Example Usage
