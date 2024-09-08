@@ -175,6 +175,7 @@ export async function verifyCertificateChain(
 
 	let tmpChain = [...chain]
 	let rootCert = tmpChain.shift()!
+	let rootIssuer: X509Certificate<any> | undefined
 	// look for issuers until we hit the end
 	while (tmpChain.length) {
 		const cn = rootCert.getSubjectField('CN')
@@ -197,15 +198,22 @@ export async function verifyCertificateChain(
 			throw new Error(`Certificate ${cn} issue verification failed`)
 		}
 
-		//remove issuer cert from chain
-		tmpChain.splice(issuer.index, 1);
+		rootIssuer = rootCAs.find(r => r.isIssuer(rootCert))
+		if(!rootIssuer) {
+			//remove issuer cert from chain
+			tmpChain.splice(issuer.index, 1);
+			rootCert = issuer.cert
+		}	else {
+			break //found root before we hit the end (it happens with letsencrypt)
+		}
 
-		rootCert = issuer.cert
 	}
 
-	const rootIssuer = rootCAs.find(r => r.isIssuer(rootCert))
 	if(!rootIssuer) {
-		throw new Error('Root CA not found. Could not verify certificate')
+		rootIssuer = rootCAs.find(r => r.isIssuer(rootCert))
+		if(!rootIssuer){
+			throw new Error('Root CA not found. Could not verify certificate')
+		}
 	}
 
 	const verified = await rootIssuer.verifyIssued(rootCert)
