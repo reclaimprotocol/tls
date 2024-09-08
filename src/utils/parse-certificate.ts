@@ -174,49 +174,41 @@ export async function verifyCertificateChain(
 
 
 	let tmpChain = [...chain]
-	let rootCert = tmpChain.shift()!
+	let currentCert = tmpChain.shift()!
 	let rootIssuer: X509Certificate<any> | undefined
-	// look for issuers until we hit the end
+	// look for issuers until we hit the end or find root CA that signed one of them
 	while (tmpChain.length) {
-		const cn = rootCert.getSubjectField('CN')
-		const issuer = findIssuer(tmpChain, rootCert)
+		const cn = currentCert.getSubjectField('CN')
+
+		if (!currentCert.isWithinValidity()) {
+			throw new Error(`Certificate ${cn} is not within validity period`)
+		}
+
+		const issuer = findIssuer(tmpChain, currentCert)
 
 		//in case there are orphan certificates in chain, but we found the root
 		if (!issuer){
 			break
 		}
 
-		if(!rootCert.isWithinValidity()) {
-			throw new Error(`Certificate ${cn} is not within validity period`)
-		}
-
-		if(!issuer.cert.isIssuer(rootCert)) {
-			throw new Error(`Certificate ${cn} was not issued by certificate ${issuer.cert.getSubjectField('CN')}`)
-		}
-
-		if(!(await issuer.cert.verifyIssued(rootCert))) {
+		if (!(await issuer.cert.verifyIssued(currentCert))) {
 			throw new Error(`Certificate ${cn} issue verification failed`)
 		}
-
-		rootIssuer = rootCAs.find(r => r.isIssuer(rootCert))
+		currentCert = issuer.cert
+		rootIssuer = rootCAs.find(r => r.isIssuer(currentCert))
 		if(!rootIssuer) {
 			//remove issuer cert from chain
 			tmpChain.splice(issuer.index, 1);
-			rootCert = issuer.cert
 		}	else {
-			break //found root before we hit the end (it happens with letsencrypt)
-		}
-
-	}
-
-	if(!rootIssuer) {
-		rootIssuer = rootCAs.find(r => r.isIssuer(rootCert))
-		if(!rootIssuer){
-			throw new Error('Root CA not found. Could not verify certificate')
+			break //found root
 		}
 	}
 
-	const verified = await rootIssuer.verifyIssued(rootCert)
+	if (!rootIssuer) {
+		throw new Error('Root CA not found. Could not verify certificate')
+	}
+
+	const verified = await rootIssuer.verifyIssued(currentCert)
 	if(!verified) {
 		throw new Error('Root CA did not issue certificate')
 	}
