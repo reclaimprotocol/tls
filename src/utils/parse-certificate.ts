@@ -213,6 +213,10 @@ export async function verifyCertificateChain(
 		throw new Error('Root CA did not issue certificate')
 	}
 
+	if (!rootIssuer.isWithinValidity()) {
+		throw new Error(`CA certificate is not within validity period`)
+	}
+
 	function findIssuer(chain:X509Certificate[], cert: X509Certificate) {
 		for(let i = 0; i < chain.length ; i++) {
 			if(chain[i].isIssuer(cert)) {
