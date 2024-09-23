@@ -1,4 +1,8 @@
-# Reclaim Protocol - TLS Client
+<div>
+    <div>
+        <img src="https://raw.githubusercontent.com/reclaimprotocol/.github/main/assets/banners/TLS.png"  />
+    </div>
+</div>
 
 A TLS client implementation in typescript. This library is fully compatible with the browser (without any polyfills) and on Node Js. 
 
@@ -52,7 +56,7 @@ Note: AES-CBC only works correctly on NodeJs.
 
 Edge version:
 ``` sh
-npm i git+https://gitlab.reclaimprotocol.org/Reclaim/tls
+npm i git+https://github.com/reclaimprotocol/tls
 ```
 
 ## Example Usage
