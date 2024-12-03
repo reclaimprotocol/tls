@@ -8,11 +8,32 @@
 		"test": "jest",
 		"lint": "eslint . --ext .js,.ts,.jsx,.tsx",
 		"lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx",
-		"prepare": "npm run build"
+		"prepare": "npm run build",
+		"commitlint": "commitlint --edit"
 	},
-	"keywords": [],
+	"keywords": [
+		"tls",
+		"webcrypto",
+		"cross-platform",
+		"cryptography",
+		"network-security",
+		"encryption",
+		"reclaim-protocol",
+		"asn1",
+		"x509",
+		"chacha20poly1305",
+		"typescript",
+		"nodejs",
+		"web-security",
+		"certificate-handling",
+		"secure-communication"
+	],
 	"author": "Adhiraj Singh",
-	"license": "ISC",
+	"license": "See License in <https://github.com/reclaimprotocol/.github/blob/main/LICENSE>",
+	"bugs": {
+		"url": "https://github.com/reclaimprotocol/tls/issues"
+	},
+	"homepage": "https://github.com/reclaimprotocol/tls/",
 	"files": [
 		"lib/*"
 	],
@@ -24,6 +45,8 @@
 	},
 	"devDependencies": {
 		"@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",
+		"@commitlint/cli": "^17.7.1",
+    	"@commitlint/config-conventional": "^17.7.0",
 		"@types/chance": "^1.1.6",
 		"@types/jest": "^29.5.13",
 		"@types/node": "^20.16.6",
