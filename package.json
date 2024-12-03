@@ -40,20 +40,20 @@
 	"dependencies": {
 		"@peculiar/asn1-ecc": "^2.3.14",
 		"@peculiar/asn1-schema": "^2.3.13",
-		"@peculiar/x509": "^1.12.2",
+		"@peculiar/x509": "^1.12.3",
 		"@stablelib/chacha20poly1305": "^1.0.1"
 	},
 	"devDependencies": {
 		"@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",
-		"@commitlint/cli": "^17.7.1",
-    	"@commitlint/config-conventional": "^17.7.0",
+		"@commitlint/cli": "^17.8.1",
+		"@commitlint/config-conventional": "^17.8.1",
 		"@types/chance": "^1.1.6",
-		"@types/jest": "^29.5.13",
-		"@types/node": "^20.16.6",
+		"@types/jest": "^29.5.14",
+		"@types/node": "^20.17.9",
 		"chance": "^1.1.12",
-		"eslint": "^9.11.1",
+		"eslint": "^9.16.0",
 		"jest": "^29.7.0",
-		"pino": "^9.4.0",
+		"pino": "^9.5.0",
 		"ts-jest": "^29.2.5",
 		"ts-node": "^10.9.2",
 		"typescript": "^4.9.5"
