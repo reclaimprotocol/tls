@@ -145,6 +145,11 @@ Use the TLS KeyUpdate method to update the traffic keys. This sends a KeyUpdate 
 await tls.updateTrafficKeys()
 ```
 
+## Updating CA certificates
+```bash
+npm run update:root-ca
+```
+
 ## Contributing to Our Project
 
 We're excited that you're interested in contributing to our project! Before you get started, please take a moment to review the following guidelines.
