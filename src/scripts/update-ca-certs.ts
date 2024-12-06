@@ -1,5 +1,6 @@
 
 import { parse } from 'csv-parse/sync'
+import * as fs from 'node:fs'
 import { loadX509FromPem } from '../utils'
 
 async function main() {
@@ -12,7 +13,6 @@ async function main() {
 
 	})
 
-	const fs = require('node:fs')
 	const data = fs.readFileSync('src/scripts/ca-template.ts', 'utf8')
 
 	let certs = ''
