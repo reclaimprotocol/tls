@@ -1,6 +1,6 @@
 import { loadX509FromPem } from './x509'
 const ADDITIONAL_ROOT_CA_LIST = [
-    `-----BEGIN CERTIFICATE-----
+	`-----BEGIN CERTIFICATE-----
 MIIFjDCCA3SgAwIBAgIQfx8skC6D0OO2+zvuR4tegDANBgkqhkiG9w0BAQsFADBM
 MSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSNjETMBEGA1UEChMKR2xv
 YmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjAeFw0yMzA3MTkwMzQzMjVaFw0y
@@ -37,12 +37,10 @@ nE0AAp9JSHxDYsma9pi4g0Phg3BgOm2euTRzw7R0SzU=
  * Mozilla Root CA List
  * downloaded from: https://wiki.mozilla.org/CA/Included_Certificates
  */
-const ROOT_CA_LIST = [
-    '<<CERTIFICATES>>'
-]
+const ROOT_CA_LIST = ['<<CERTIFICATES>>']
 ROOT_CA_LIST.push(...ADDITIONAL_ROOT_CA_LIST)
 /**
  * Reclaim root CA store
  */
 export const ROOT_CAS = ROOT_CA_LIST
-    .map(loadX509FromPem)
+	.map(loadX509FromPem)

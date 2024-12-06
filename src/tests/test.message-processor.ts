@@ -1,6 +1,6 @@
 import { TLSPacket } from '../types'
-import { logger } from '../utils/logger'
-import { makeMessageProcessor } from '../utils/packets'
+import { logger } from '../utils'
+import { makeMessageProcessor } from '../utils'
 import { expectBuffsEq } from './utils'
 
 describe('TLS Message Processor', () => {
@@ -59,6 +59,7 @@ describe('TLS Message Processor', () => {
 		expect(pkts2.length).toBe(1)
 	})
 
+	// eslint-disable-next-line unicorn/consistent-function-scoping
 	function makeTestMsgProcessor() {
 		const processor = makeMessageProcessor(logger)
 

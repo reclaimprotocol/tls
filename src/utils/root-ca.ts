@@ -1,6 +1,6 @@
 import { loadX509FromPem } from './x509'
 const ADDITIONAL_ROOT_CA_LIST = [
-    `-----BEGIN CERTIFICATE-----
+	`-----BEGIN CERTIFICATE-----
 MIIFjDCCA3SgAwIBAgIQfx8skC6D0OO2+zvuR4tegDANBgkqhkiG9w0BAQsFADBM
 MSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSNjETMBEGA1UEChMKR2xv
 YmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjAeFw0yMzA3MTkwMzQzMjVaFw0y
@@ -37,8 +37,7 @@ nE0AAp9JSHxDYsma9pi4g0Phg3BgOm2euTRzw7R0SzU=
  * Mozilla Root CA List
  * downloaded from: https://wiki.mozilla.org/CA/Included_Certificates
  */
-const ROOT_CA_LIST = [
-    `-----BEGIN CERTIFICATE-----
+const ROOT_CA_LIST = [`-----BEGIN CERTIFICATE-----
 MIIFuzCCA6OgAwIBAgIIVwoRl0LE48wwDQYJKoZIhvcNAQELBQAwazELMAkGA1UE
 BhMCSVQxDjAMBgNVBAcMBU1pbGFuMSMwIQYDVQQKDBpBY3RhbGlzIFMucC5BLi8w
 MzM1ODUyMDk2NzEnMCUGA1UEAwweQWN0YWxpcyBBdXRoZW50aWNhdGlvbiBSb290
@@ -4323,11 +4322,10 @@ IR9NmXmd4c8nnxCbHIgNsIpkQTG4DmyQJKSbXHGPurt+HBvbaoAPIbzp26a3QPSy
 i6mx5O+aGtA9aZnuqCij4Tyz8LIRnM98QObd50N9otg6tamN8jSZxNQQ4Qb9CYQQ
 O+7ETPTsJ3xCwnR8gooJybQDJbw=
 -----END CERTIFICATE-----`, //XRamp Global Certification Authority
-
 ]
 ROOT_CA_LIST.push(...ADDITIONAL_ROOT_CA_LIST)
 /**
  * Reclaim root CA store
  */
 export const ROOT_CAS = ROOT_CA_LIST
-    .map(loadX509FromPem)
+	.map(loadX509FromPem)
