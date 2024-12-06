@@ -13,8 +13,8 @@ export function toHexStringWithWhitespace(buff: Uint8Array, whitespace = ' ') {
 
 export function xor(a: Uint8Array, b: Uint8Array) {
 	const result = new Uint8Array(a.length)
-	for(let i = 0; i < a.length; i++) {
-		result[i] = a[i]! ^ b[i]!
+	for(const [i, element] of a.entries()) {
+		result[i] = element ^ b[i]
 	}
 
 	return result
@@ -37,8 +37,8 @@ export function areUint8ArraysEqual(a: Uint8Array, b: Uint8Array) {
 		return false
 	}
 
-	for(let i = 0; i < a.length; i++) {
-		if(a[i] !== b[i]) {
+	for(const [i, element] of a.entries()) {
+		if(element !== b[i]) {
 			return false
 		}
 	}

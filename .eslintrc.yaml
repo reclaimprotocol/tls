@@ -1,3 +1,8 @@
 extends: '@adiwajshing'
 parserOptions:
   project: ./tsconfig.lint.json
+rules:
+    '@typescript-eslint/no-explicit-any': 0
+    '@typescript-eslint/no-unused-vars': 0
+    '@typescript-eslint/type-annotation-spacing': 0
+    '@typescript-eslint/member-delimiter-style': 0
