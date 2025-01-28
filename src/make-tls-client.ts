@@ -666,8 +666,9 @@ export function makeTLSClient({
 	}
 
 	async function end(error?: Error) {
-		ended = true
 		await enqueueServerPacket(() => { })
+
+		ended = true
 		handshakeDone = false
 		handshakeMsgs = []
 		keys = undefined
