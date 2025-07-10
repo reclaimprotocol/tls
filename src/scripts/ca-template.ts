@@ -144,7 +144,7 @@ ozpZdQFmkCo+neBiKR6HqIA+LMTMCMMuv2khGGuPHmtDze4GmEGZtYLyF8EQpa5Y
 jPuV6k2Cr/N3XxFpT3hRpt/3usU/Zb9wfKPtWpoznZ4/44c1p9rzFcZYrWkj3A+7
 TNBJE0GmP2fhXhP1D/XVfIW/h0yCJGEiV9Glm/uGOa3DXHlmbAcxSyCRraG+ZBkA
 7h4SeM6Y8l/7MBRpPCz6l8Y=
------END CERTIFICATE-----`
+-----END CERTIFICATE-----` //GeoTrust TLS RSA CA G1
 ]
 /**
  * Mozilla Root CA List
