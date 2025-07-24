@@ -1,5 +1,11 @@
 /* eslint indent: 0 */
-global.TLS_ADDITIONAL_ROOT_CA_LIST ||= []
+
+let list
+if(typeof global === 'object' && global) {
+	list = (global.TLS_ADDITIONAL_ROOT_CA_LIST ||= [])
+} else if(typeof window === 'object' && window) {
+	list = (window.TLS_ADDITIONAL_ROOT_CA_LIST ||= [])
+}
 
 TLS_ADDITIONAL_ROOT_CA_LIST.push(
 	`-----BEGIN CERTIFICATE-----
