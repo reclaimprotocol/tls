@@ -1,11 +1,12 @@
+import './additional-root-cas'
 import { crypto } from '../crypto'
 import type { CertificatePublicKey, CipherSuite, Key, TLSProcessContext, X509Certificate } from '../types'
 import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
 import { getHash } from './decryption-utils'
 import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
+import { MOZILLA_ROOT_CA_LIST } from './mozilla-root-cas'
 import { expectReadWithLength, packWithLength } from './packets'
-import { ROOT_CAS } from './root-ca'
-import { loadX509FromDer } from './x509'
+import { loadX509FromDer, loadX509FromPem } from './x509'
 
 type VerifySignatureOptions = {
 	signature: Uint8Array
@@ -15,6 +16,7 @@ type VerifySignatureOptions = {
 }
 
 const CERT_VERIFY_TXT = strToUint8Array('TLS 1.3, server CertificateVerify')
+let ROOT_CAS: X509Certificate[] | undefined
 
 export function parseCertificates(
 	data: Uint8Array,
@@ -160,8 +162,8 @@ export async function verifyCertificateChain(
 	additionalRootCAs?: X509Certificate[]
 ) {
 	const rootCAs = [
-		...ROOT_CAS,
-		...additionalRootCAs || []
+		...loadRootCAs(),
+		...(additionalRootCAs || [])
 	]
 
 	const commonNames = [
@@ -256,4 +258,17 @@ function matchHostname(host: string, commonName: string) {
 		comp === cnComps[i]
 			|| cnComps[i] === '*'
 	))
+}
+
+function loadRootCAs() {
+	if(ROOT_CAS) {
+		return ROOT_CAS
+	}
+
+	ROOT_CAS = MOZILLA_ROOT_CA_LIST.map(loadX509FromPem)
+	if(typeof TLS_ADDITIONAL_ROOT_CA_LIST !== 'undefined') {
+		ROOT_CAS.push(...TLS_ADDITIONAL_ROOT_CA_LIST.map(loadX509FromPem))
+	}
+
+	return ROOT_CAS
 }

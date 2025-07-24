@@ -33,7 +33,7 @@ async function main() {
 	}
 
 	const newData = data.replace('\'<<CERTIFICATES>>\'', certs)
-	fs.writeFileSync('src/utils/root-ca.ts', Buffer.from(newData))
+	fs.writeFileSync('src/utils/mozilla-root-cas.ts', Buffer.from(newData))
 }
 
 main().then()
