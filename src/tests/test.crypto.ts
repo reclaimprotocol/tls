@@ -1,16 +1,12 @@
-import { crypto } from '../crypto'
-import { TLSPresharedKey } from '../types'
-import { computeBinderSuffix, packPresharedKeyExtension } from '../utils'
-import { computeSharedKeys, computeSharedKeysTls12 } from '../utils'
-import { toHexStringWithWhitespace } from '../utils'
-import { expectReadWithLength } from '../utils'
-import { getSignatureDataTls13, verifyCertificateChain, verifyCertificateSignature } from '../utils'
-import { getPskFromTicket, parseSessionTicket } from '../utils'
-import { encryptWrappedRecord } from '../utils'
-import { loadX509FromPem } from '../utils'
+import { crypto, setCryptoImplementation } from '../crypto'
+import { pureJsCrypto } from '../crypto/pure'
+import type { TLSPresharedKey } from '../types'
+import { computeBinderSuffix, computeSharedKeys, computeSharedKeysTls12, encryptWrappedRecord, expectReadWithLength, getPskFromTicket, getSignatureDataTls13, loadX509FromPem, packPresharedKeyExtension, parseSessionTicket, toHexStringWithWhitespace, verifyCertificateChain, verifyCertificateSignature } from '../utils'
 import { bufferFromHexStringWithWhitespace, expectBuffsEq } from './utils'
 
 const curve = 'X25519'
+
+setCryptoImplementation(pureJsCrypto)
 
 describe('Crypto Tests', () => {
 

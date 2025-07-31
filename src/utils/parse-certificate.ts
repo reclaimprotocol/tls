@@ -98,11 +98,7 @@ export async function verifyCertificateSignature({
 	signatureData,
 }: VerifySignatureOptions) {
 	const { algorithm: cryptoAlg } = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm]
-	const pubKey = await crypto.importKey(
-		cryptoAlg,
-		publicKey,
-		'public'
-	)
+	const pubKey = await crypto.importKey(cryptoAlg, publicKey, 'public')
 	const verified = await crypto.verify(cryptoAlg, {
 		data: signatureData,
 		signature,

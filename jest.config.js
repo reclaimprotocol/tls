@@ -8,8 +8,18 @@ module.exports = {
 	'testMatch': [
 		'**/tests/test.*.+(ts|tsx|js)',
 	],
-	'transform': {
-		'^.+\\.(ts|tsx)$': 'ts-jest'
+	"transform": {
+		"^.+\\.(ts|tsx)$": [
+			'@swc/jest',
+			{
+				"jsc": {
+					"parser": {
+						"syntax": "typescript",
+						"decorators": true,
+					}
+				}
+			}
+		]
 	},
 	setupFiles: []
 }

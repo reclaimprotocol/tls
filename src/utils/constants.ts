@@ -201,10 +201,6 @@ export const SUPPORTED_SIGNATURE_ALGS_MAP = {
 		identifier: new Uint8Array([ 0x04, 0x03 ]),
 		algorithm: 'ECDSA-SECP256R1-SHA256'
 	},
-	ED25519: {
-		identifier: new Uint8Array([ 0x08, 0x07 ]),
-		algorithm: 'ED25519'
-	},
 	RSA_PSS_RSAE_SHA256: {
 		identifier: new Uint8Array([ 0x08, 0x04 ]),
 		algorithm: 'RSA-PSS-SHA256',

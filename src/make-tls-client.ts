@@ -21,11 +21,11 @@ const RECORD_LENGTH_BYTES = 3
 
 export function makeTLSClient({
 	host,
-	verifyServerCertificate,
+	verifyServerCertificate = true,
 	rootCAs,
 	logger: _logger,
 	cipherSuites,
-	namedCurves,
+	namedCurves = SUPPORTED_NAMED_CURVES,
 	supportedProtocolVersions,
 	signatureAlgorithms,
 	applicationLayerProtocols,
@@ -37,9 +37,6 @@ export function makeTLSClient({
 	onHandshake,
 	onRecvCertificates
 }: TLSClientOptions) {
-	verifyServerCertificate = verifyServerCertificate !== false
-	namedCurves = namedCurves || SUPPORTED_NAMED_CURVES
-
 	const logger = _logger || LOGGER
 	const processor = makeMessageProcessor(logger)
 	const { enqueue: enqueueServerPacket } = makeQueue()
@@ -686,14 +683,9 @@ export function makeTLSClient({
 
 	async function getKeyPair(keyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP) {
 		const algorithm = SUPPORTED_NAMED_CURVE_MAP[keyType].algorithm
-		if(!keyPairs[keyType]) {
-			keyPairs[keyType] = await crypto.generateKeyPair(algorithm)
-		}
+		keyPairs[keyType] ??= await crypto.generateKeyPair(algorithm)
 
-		return {
-			algorithm,
-			keyPair: keyPairs[keyType]!
-		}
+		return { algorithm, keyPair: keyPairs[keyType] }
 	}
 
 	return {
@@ -750,7 +742,7 @@ export function makeTLSClient({
 			const clientHello = await packClientHello({
 				host,
 				keysToShare: await Promise.all(
-					namedCurves!
+					namedCurves
 						.map(async(keyType) => {
 							const { keyPair } = await getKeyPair(keyType)
 							return {

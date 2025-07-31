@@ -1,4 +1,4 @@
-import { AuthenticatedSymmetricCryptoAlgorithm, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
+import type { AuthenticatedSymmetricCryptoAlgorithm, Crypto, HashAlgorithm, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
 import { TLS_PROTOCOL_VERSION_MAP } from './constants'
 
 /**
@@ -125,4 +125,39 @@ export function getTlsVersionFromBytes(bytes: Uint8Array) {
 	}
 
 	return supportedV[0] as TLSProtocolVersion
+}
+
+export const hkdfExpand = async(
+	alg: HashAlgorithm,
+	hashLength: number,
+	key: Key,
+	expLength: number,
+	info: Uint8Array,
+	crypto: Crypto
+) => {
+	info ||= new Uint8Array(0)
+	const infoLength = info.length
+	const steps = Math.ceil(expLength / hashLength)
+	if(steps > 0xFF) {
+		throw new Error(`OKM length ${expLength} is too long for ${alg} hash`)
+	}
+
+	// use single buffer with unnecessary create/copy/move operations
+	const t = new Uint8Array(hashLength * steps + infoLength + 1)
+	for(let c = 1, start = 0, end = 0; c <= steps; ++c) {
+		// add info
+		t.set(info, end)
+		// add counter
+		t.set([c], end + infoLength)
+		// use view: T(C) = T(C-1) | info | C
+		const hmac = await crypto
+			.hmac(alg, key, t.slice(start, end + infoLength + 1))
+		// put back to the same buffer
+		t.set(hmac.slice(0, t.length - end), end)
+
+		start = end // used for T(C-1) start
+		end += hashLength // used for T(C-1) end & overall end
+	}
+
+	return t.slice(0, expLength)
 }

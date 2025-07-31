@@ -1,9 +1,12 @@
 import Chance from 'chance'
 import { Socket } from 'net'
+import { pureJsCrypto } from '../crypto/pure'
 import { CipherSuite, TLSClientOptions, TLSPresharedKey, TLSSessionTicket } from '../types'
-import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_NAMED_CURVE_MAP } from '..'
+import { crypto, makeTLSClient, setCryptoImplementation, strToUint8Array, SUPPORTED_NAMED_CURVE_MAP } from '..'
 import { createMockTLSServer } from './mock-tls-server'
 import { delay, logger } from './utils'
+
+setCryptoImplementation(pureJsCrypto)
 
 const chance = new Chance()
 
