@@ -1,6 +1,6 @@
 {
 	"name": "@reclaimprotocol/tls",
-	"version": "0.0.7",
+	"version": "0.0.8",
 	"description": "WebCrypto Based Cross Platform TLS",
 	"main": "lib/index",
 	"scripts": {

@@ -193,26 +193,34 @@ export const ALERT_DESCRIPTION = {
 export const SUPPORTED_CIPHER_SUITES = Object.keys(SUPPORTED_CIPHER_SUITE_MAP) as (keyof typeof SUPPORTED_CIPHER_SUITE_MAP)[]
 
 export const SUPPORTED_SIGNATURE_ALGS_MAP = {
+	ECDSA_SECP256R1_SHA256: {
+		identifier: new Uint8Array([ 0x04, 0x03 ]),
+		algorithm: 'ECDSA-SECP256R1-SHA256'
+	},
 	ECDSA_SECP384R1_SHA256: {
 		identifier: new Uint8Array([ 0x05, 0x03 ]),
 		algorithm: 'ECDSA-SECP384R1-SHA384'
 	},
-	ECDSA_SECP256R1_SHA256: {
-		identifier: new Uint8Array([ 0x04, 0x03 ]),
-		algorithm: 'ECDSA-SECP256R1-SHA256'
+	ED25519: {
+		identifier: new Uint8Array([ 0x08, 0x07 ]),
+		algorithm: 'ED25519'
 	},
 	RSA_PSS_RSAE_SHA256: {
 		identifier: new Uint8Array([ 0x08, 0x04 ]),
 		algorithm: 'RSA-PSS-SHA256',
 	},
+	RSA_PKCS1_SHA256: {
+		identifier: new Uint8Array([ 0x04, 0x01 ]),
+		algorithm: 'RSA-PKCS1-SHA256',
+	},
+	RSA_PKCS1_SHA384: {
+		identifier: new Uint8Array([ 0x05, 0x01 ]),
+		algorithm: 'RSA-PKCS1-SHA384',
+	},
 	RSA_PKCS1_SHA512: {
 		identifier: new Uint8Array([ 0x06, 0x01 ]),
 		algorithm: 'RSA-PKCS1-SHA512'
 	},
-	RSA_PKCS1_SHA256: {
-		identifier: new Uint8Array([ 0x04, 0x01 ]),
-		algorithm: 'RSA-PKCS1-SHA256',
-	}
 } as const
 
 export const SUPPORTED_SIGNATURE_ALGS = Object.keys(SUPPORTED_SIGNATURE_ALGS_MAP) as (keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP)[]

@@ -35,40 +35,34 @@ const RENEGOTIATION_INFO = new Uint8Array([ 0xff, 0x01, 0x00, 0x01, 0x00 ])
 
 export async function packClientHello({
 	host,
-	sessionId,
-	random,
+	sessionId = crypto.randomBytes(32),
+	random = crypto.randomBytes(32),
 	keysToShare,
 	psk,
 	cipherSuites,
-	supportedProtocolVersions,
-	signatureAlgorithms,
+	supportedProtocolVersions = Object
+		.keys(TLS_PROTOCOL_VERSION_MAP) as TLSProtocolVersion[],
+	signatureAlgorithms = Object
+		.keys(SUPPORTED_SIGNATURE_ALGS_MAP) as SupportedSignatureAlgorithm[],
 	applicationLayerProtocols = []
 }: ClientHelloOptions) {
 	// generate random & sessionId if not provided
-	random ||= crypto.randomBytes(32)
-	sessionId ||= crypto.randomBytes(32)
-	supportedProtocolVersions ||= Object
-		.keys(TLS_PROTOCOL_VERSION_MAP) as TLSProtocolVersion[]
-	signatureAlgorithms ||= Object
-		.keys(SUPPORTED_SIGNATURE_ALGS_MAP) as SupportedSignatureAlgorithm[]
-
 	const packedSessionId = packWithLength(sessionId).slice(1)
-	const cipherSuiteList = (cipherSuites || Object.keys(SUPPORTED_CIPHER_SUITE_MAP))
-		.map(cipherSuite => SUPPORTED_CIPHER_SUITE_MAP[cipherSuite].identifier)
+	const cipherSuiteList	= (
+		cipherSuites || Object.keys(SUPPORTED_CIPHER_SUITE_MAP)
+	).map(cipherSuite => SUPPORTED_CIPHER_SUITE_MAP[cipherSuite].identifier)
 	const packedCipherSuites = packWithLength(
 		concatenateUint8Arrays(cipherSuiteList)
 	)
 	const extensionsList = [
+		RENEGOTIATION_INFO,
 		packServerNameExtension(host),
-		packSupportedGroupsExtension(
-			keysToShare.map(k => k.type)
-		),
+		packSupportedGroupsExtension(keysToShare.map(k => k.type)),
 		packSessionTicketExtension(),
 		packVersionsExtension(supportedProtocolVersions),
 		packSignatureAlgorithmsExtension(signatureAlgorithms),
 		packPresharedKeyModeExtension(),
 		await packKeyShareExtension(keysToShare),
-		RENEGOTIATION_INFO
 	]
 
 	if(psk) {
@@ -83,16 +77,13 @@ export async function packClientHello({
 		extensionsList.push(
 			packExtension({
 				type: 'ALPN',
-				data: concatenateUint8Arrays(
-					protocols
-				),
+				data: concatenateUint8Arrays(protocols),
 			})
 		)
 	}
 
-	const packedExtensions = packWithLength(
-		concatenateUint8Arrays(extensionsList)
-	)
+	const packedExtensions
+		= packWithLength(concatenateUint8Arrays(extensionsList))
 
 	const handshakeData = concatenateUint8Arrays([
 		CLIENT_VERSION,
@@ -241,7 +232,7 @@ function packServerNameExtension(host: string) {
 }
 
 function packExtension({ type, data, lengthBytes }: ExtensionData) {
-	lengthBytes = lengthBytes || 2
+	lengthBytes ||= 2
 	let packed = data.length ? packWithLength(data) : data
 	if(lengthBytes === 1) {
 		packed = packed.slice(1)
