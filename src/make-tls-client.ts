@@ -310,6 +310,13 @@ export function makeTLSClient({
 
 					// extract pub key & signature of pub key with cert
 					const keyShare = await processServerKeyShare(content)
+					logger.debug(
+						{
+							publicKeyType: keyShare.publicKeyType,
+							signatureAlgorithm: keyShare.signatureAlgorithm,
+						},
+						'got server key share'
+					)
 					// compute signature data
 					const signatureData12 = await getSignatureDataTls12(
 						{
