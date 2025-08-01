@@ -1,6 +1,6 @@
 {
 	"name": "@reclaimprotocol/tls",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"description": "WebCrypto Based Cross Platform TLS",
 	"main": "lib/index",
 	"scripts": {
@@ -43,7 +43,8 @@
 		"@peculiar/asn1-ecc": "^2.3.14",
 		"@peculiar/asn1-schema": "^2.3.13",
 		"@peculiar/x509": "^1.12.3",
-		"@stablelib/chacha20poly1305": "^1.0.1"
+		"@stablelib/chacha20poly1305": "^1.0.1",
+		"micro-rsa-dsa-dh": "^0.1.0"
 	},
 	"devDependencies": {
 		"@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",

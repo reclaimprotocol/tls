@@ -9,7 +9,10 @@ type SupportedNamedCurve = keyof typeof SUPPORTED_NAMED_CURVE_MAP
 
 type SupportedSignatureAlgorithm = keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP
 
-type PublicKeyData = { type: SupportedNamedCurve, key: Key }
+type PublicKeyData = {
+	type: SupportedNamedCurve
+	key: Key
+}
 
 type ClientHelloOptions = TLSHelloBaseOptions & {
 	host: string

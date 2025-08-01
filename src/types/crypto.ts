@@ -8,6 +8,7 @@ export type SymmetricCryptoAlgorithm = 'AES-128-CBC'
 export type AsymmetricCryptoAlgorithm = 'X25519'
 	| 'P-256' // SECP256R1
 	| 'P-384' // SECP384R1
+export type AsymmetricEncDecAlgorithm = 'RSA-PCKS1_5'
 export type SignatureAlgorithm = 'RSA-PSS-SHA256'
 	| 'ECDSA-SECP384R1-SHA384'
 	| 'ECDSA-SECP256R1-SHA256'
@@ -45,28 +46,40 @@ export type KeyPair = {
 	privKey: Key
 }
 
-export type CurveImplementation = {
-	generateKeyPair(): KeyPair
-	calculateSharedSecret(privateKey: Key, publicKey: Key): Key
-}
-
 export type Crypto = {
-	importKey(alg: AuthenticatedSymmetricCryptoAlgorithm | SymmetricCryptoAlgorithm, raw: Uint8Array): Awaitable<Key>
+	importKey(
+		alg: AuthenticatedSymmetricCryptoAlgorithm
+			| SymmetricCryptoAlgorithm,
+		raw: Uint8Array
+	): Awaitable<Key>
 	importKey(alg: HashAlgorithm, raw: Uint8Array): Awaitable<Key>
 	importKey(alg: SignatureAlgorithm, raw: Uint8Array, type: 'public'): Awaitable<Key>
-	importKey(alg: AsymmetricCryptoAlgorithm, raw: Uint8Array, type: 'private' | 'public'): Awaitable<Key>
+	importKey(
+		alg: AsymmetricCryptoAlgorithm | AsymmetricEncDecAlgorithm,
+		raw: Uint8Array,
+		type: 'private' | 'public'
+	): Awaitable<Key>
 	exportKey(key: Key): Awaitable<Uint8Array>
 
-	generateKeyPair(alg: AsymmetricCryptoAlgorithm): Awaitable<KeyPair>
+	generateKeyPair(
+		alg: AsymmetricCryptoAlgorithm
+	): Awaitable<KeyPair>
 	calculateSharedSecret(alg: AsymmetricCryptoAlgorithm, privateKey: Key, publicKey: Key): Awaitable<Uint8Array>
 
 	randomBytes(length: number): Uint8Array
+	asymmetricEncrypt(
+		cipherSuite: AsymmetricEncDecAlgorithm,
+		opts: {
+			publicKey: Key
+			data: Uint8Array
+		}
+	): Awaitable<Uint8Array>
 	/**
 	 * Encrypts data with the given cipher suite and options.
 	 * Expects padding has already been applied to the data.
 	 */
 	encrypt(
-		cipherSuite: SymmetricCryptoAlgorithm,
+		cipherSuite: SymmetricCryptoAlgorithm | 'RSA-OAEP',
 		opts: CryptOptions
 	): Awaitable<Uint8Array>
 	decrypt(

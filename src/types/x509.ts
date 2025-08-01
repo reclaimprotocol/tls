@@ -1,10 +1,14 @@
 export type PrivateKey = string
 
-/**
- * public key in DER format
- * DER => Uint8Array
- */
-export type CertificatePublicKey = Uint8Array
+export type CertificatePublicKey = {
+	/**
+	 * public key in DER format
+	 * DER => Uint8Array
+	 */
+	buffer: Uint8Array
+
+	algorithm: string
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type X509Certificate<T = any> = {
