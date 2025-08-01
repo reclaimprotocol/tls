@@ -105,6 +105,7 @@ export const webCrypto: Crypto<CryptoKey> = {
 			}
 			break
 		case 'RSA-PKCS1-SHA512':
+		case 'RSA-PKCS1-SHA384':
 		case 'RSA-PKCS1-SHA256':
 			keyType = 'spki'
 			keyUsages = ['verify']
@@ -112,7 +113,7 @@ export const webCrypto: Crypto<CryptoKey> = {
 				name: 'RSASSA-PKCS1-v1_5',
 				hash: alg === 'RSA-PKCS1-SHA256'
 					? 'SHA-256'
-					: 'SHA-512'
+					: (alg === 'RSA-PKCS1-SHA384' ? 'SHA-384' : 'SHA-512')
 			}
 			break
 		case 'ECDSA-SECP256R1-SHA256':
@@ -313,12 +314,13 @@ export const webCrypto: Crypto<CryptoKey> = {
 			}
 			break
 		case 'RSA-PKCS1-SHA512':
+		case 'RSA-PKCS1-SHA384':
 		case 'RSA-PKCS1-SHA256':
 			verifyArgs = {
 				name: 'RSASSA-PKCS1-v1_5',
 				hash: alg === 'RSA-PKCS1-SHA256'
 					? 'SHA-256'
-					: 'SHA-512'
+					: (alg === 'RSA-PKCS1-SHA384' ? 'SHA-384' : 'SHA-512')
 			}
 			break
 		case 'ECDSA-SECP256R1-SHA256':

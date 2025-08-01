@@ -13,7 +13,7 @@ import type { CHash } from '@noble/hashes/utils'
 import { OriginatorPublicKey } from '@peculiar/asn1-cms'
 import { RSAPublicKey } from '@peculiar/asn1-rsa'
 import { AsnParser } from '@peculiar/asn1-schema'
-import { mgf1, PKCS1_SHA256, PKCS1_SHA512, PSS, type PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
+import { mgf1, PKCS1_SHA256, PKCS1_SHA384, PKCS1_SHA512, PSS, type PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
 import type { AsymmetricCryptoAlgorithm, AuthenticatedSymmetricCryptoAlgorithm, Crypto, HashAlgorithm } from '../types'
 import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics'
 
@@ -142,6 +142,11 @@ export const pureJsCrypto: Crypto<Uint8Array> = {
 		if(alg === 'RSA-PKCS1-SHA256') {
 			const rsaPubKey = parseRsaPublicKeyFromAsn1(publicKey)
 			return PKCS1_SHA256.verify(rsaPubKey, data, signature)
+		}
+
+		if(alg === 'RSA-PKCS1-SHA384') {
+			const rsaPubKey = parseRsaPublicKeyFromAsn1(publicKey)
+			return PKCS1_SHA384.verify(rsaPubKey, data, signature)
 		}
 
 		if(alg === 'RSA-PKCS1-SHA512') {
