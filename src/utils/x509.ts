@@ -6,7 +6,9 @@ import { webcrypto } from './webcrypto'
 
 peculiar.cryptoProvider.set(webcrypto)
 
-export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<peculiar.X509Certificate> {
+export function loadX509FromPem(
+	pem: string | Uint8Array
+): X509Certificate<peculiar.X509Certificate> {
 	let cert: peculiar.X509Certificate
 	try {
 		cert = new peculiar.X509Certificate(pem)
@@ -24,10 +26,13 @@ export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<pecul
 			return cert.subjectName.getField(name)
 		},
 		getAlternativeDNSNames(): string[] {
-			//search for names in SubjectAlternativeNameExtension
-			const ext = cert.extensions.find(e => e.type === '2.5.29.17') //subjectAltName
+			// search for names in SubjectAlternativeNameExtension
+			const ext = cert.extensions
+				.find(e => e.type === '2.5.29.17') //subjectAltName
 			if(ext instanceof SubjectAlternativeNameExtension) {
-				return ext.names.items.filter(n => n.type === 'dns').map(n => n.value)
+				return ext.names.items
+					.filter(n => n.type === 'dns')
+					.map(n => n.value)
 			}
 
 			return []
@@ -57,10 +62,6 @@ export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<pecul
 }
 
 export function loadX509FromDer(der: Uint8Array) {
-	// const PEM_PREFIX = '-----BEGIN CERTIFICATE-----\n'
-	// const PEM_POSTFIX = '-----END CERTIFICATE-----'
-
-	// const splitText = der.toString('base64').match(/.{0,64}/g)!.join('\n')
-	// const pem = `${PEM_PREFIX}${splitText}${PEM_POSTFIX}`
+	// peculiar handles both
 	return loadX509FromPem(der)
 }
