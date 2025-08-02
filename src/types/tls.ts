@@ -12,6 +12,8 @@ export type TLSPacket = {
 	content: Uint8Array
 }
 
+export type TLSKeyType = keyof typeof SUPPORTED_NAMED_CURVE_MAP | 'RSA'
+
 export type SupportedExtensionServerData = {
 	'ALPN': string
 	'SUPPORTED_VERSIONS': TLSProtocolVersion

@@ -113,6 +113,15 @@ export const SUPPORTED_CIPHER_SUITE_MAP = {
 		hashAlgorithm: 'SHA-256',
 		cipher: 'AES-128-GCM',
 	},
+	TLS_RSA_WITH_AES_128_GCM_SHA256: {
+		identifier: new Uint8Array([ 0x00, 0x9c ]),
+		keyLength: 16,
+		hashLength: 32,
+		ivLength: 4,
+		hashAlgorithm: 'SHA-256',
+		cipher: 'AES-128-GCM',
+		isRsaEcdh: true, // RSA key exchange
+	},
 	TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384: {
 		identifier: new Uint8Array([ 0xc0, 0x30 ]),
 		keyLength: 32,

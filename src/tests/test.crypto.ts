@@ -384,10 +384,13 @@ AwAxAAAA
 				'base64'
 			),
 			algorithm: 'RSA_PSS_RSAE_SHA256',
-			publicKey: Buffer.from(
-				'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsjbkuJeiviTDDAWAUdWfxCGz3zWLGOj0O0eEi5DayefzZuinaGrBXyZT4KpDfz/wiw64H/PZHt2ppNWEMPt0jTs0p3DQLbXIFXLWmgb06sBVyjggTZKSReDre5Ze/KymBsrs1BTeRtkWScXfgJD99o8zqOhSGjy51Ce7nR8B77sfqGjyrvsuew93TtXao8XVBCl0jebT/tG/Qh2wkolvKlV2b9gvafvUoMkqT50cbJVD1dqZvJNukbro9wareaoeEPmEmsJaplkMzXTJDU4jYvBYmp2dHq0/BMepNtVpVFrTpLQReaI9jjZ40D25F/zBkapipf4unKsiPXff0ABPSwIDAQAB',
-				'base64'
-			),
+			publicKey: {
+				buffer: Buffer.from(
+					'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsjbkuJeiviTDDAWAUdWfxCGz3zWLGOj0O0eEi5DayefzZuinaGrBXyZT4KpDfz/wiw64H/PZHt2ppNWEMPt0jTs0p3DQLbXIFXLWmgb06sBVyjggTZKSReDre5Ze/KymBsrs1BTeRtkWScXfgJD99o8zqOhSGjy51Ce7nR8B77sfqGjyrvsuew93TtXao8XVBCl0jebT/tG/Qh2wkolvKlV2b9gvafvUoMkqT50cbJVD1dqZvJNukbro9wareaoeEPmEmsJaplkMzXTJDU4jYvBYmp2dHq0/BMepNtVpVFrTpLQReaI9jjZ40D25F/zBkapipf4unKsiPXff0ABPSwIDAQAB',
+					'base64'
+				),
+				algorithm: 'RSASSA-PKCS1-v1_5'
+			},
 			signatureData,
 		})
 	})

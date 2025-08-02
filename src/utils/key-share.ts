@@ -1,20 +1,23 @@
 import { crypto } from '../crypto'
-import { Key } from '../types'
-import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
+import { Key, TLSProtocolVersion, X509Certificate } from '../types'
+import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from './constants'
 import { areUint8ArraysEqual, concatenateUint8Arrays } from './generics'
 import { expectReadWithLength, packWith3ByteLength, packWithLength } from './packets'
 
-export async function packClientKeyShare(publicKey: Key) {
+export async function packClientCurveKeyShare(publicKey: Key) {
 	return concatenateUint8Arrays([
-		new Uint8Array([
-			SUPPORTED_RECORD_TYPE_MAP['CLIENT_KEY_SHARE']
-		]),
+		new Uint8Array([SUPPORTED_RECORD_TYPE_MAP['CLIENT_KEY_SHARE']]),
 		packWith3ByteLength(
 			// pack with 1 byte length
-			packWithLength(
-				await crypto.exportKey(publicKey)
-			).slice(1)
+			packWithLength(await crypto.exportKey(publicKey)).slice(1)
 		)
+	])
+}
+
+export async function packClientRsaKeyShare(encPreMaster: Uint8Array) {
+	return concatenateUint8Arrays([
+		new Uint8Array([SUPPORTED_RECORD_TYPE_MAP['CLIENT_KEY_SHARE']]),
+		packWith3ByteLength(packWithLength(encPreMaster))
 	])
 }
 
@@ -69,4 +72,28 @@ export async function processServerKeyShare(data: Uint8Array) {
 
 		return content
 	}
+}
+
+export async function createRsaPreMasterSecret(
+	serverCert: X509Certificate,
+	tlsVersion: TLSProtocolVersion,
+	rand: Uint8Array = crypto.randomBytes(46)
+) {
+	const preMasterSecret = concatenateUint8Arrays([
+		TLS_PROTOCOL_VERSION_MAP[tlsVersion],
+		rand
+	])
+
+	const servPubKey = serverCert.getPublicKey()
+	if(servPubKey.algorithm !== 'RSASSA-PKCS1-v1_5') {
+		throw new Error(
+			`expected RSASSA-PKCS1-v1_5 cert, got ${servPubKey.algorithm}`
+		)
+	}
+
+	const publicKey = await crypto
+		.importKey('RSA-PCKS1_5', servPubKey.buffer, 'public')
+	const rslt = await crypto
+		.asymmetricEncrypt('RSA-PCKS1_5', { data: preMasterSecret, publicKey })
+	return { preMasterSecret, encrypted: rslt }
 }

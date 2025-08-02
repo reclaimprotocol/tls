@@ -1,9 +1,9 @@
 import { packClientHello } from './utils/client-hello'
-import { CONTENT_TYPE_MAP, MAX_ENC_PACKET_SIZE, PACKET_TYPE, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
+import { CONTENT_TYPE_MAP, MAX_ENC_PACKET_SIZE, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
 import { computeSharedKeys, computeSharedKeysTls12, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
 import { generateFinishTls12, packClientFinishTls12, packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
 import { areUint8ArraysEqual, chunkUint8Array, concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
-import { packClientKeyShare, processServerKeyShare } from './utils/key-share'
+import { createRsaPreMasterSecret, packClientCurveKeyShare, packClientRsaKeyShare, processServerKeyShare } from './utils/key-share'
 import { packKeyUpdateRecord } from './utils/key-update'
 import { logger as LOGGER } from './utils/logger'
 import { makeQueue } from './utils/make-queue'
@@ -15,7 +15,7 @@ import { parseServerHello } from './utils/parse-server-hello'
 import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
 import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
 import { crypto } from './crypto'
-import { CipherSuite, Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSPacket, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
+import { CipherSuite, Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSKeyType, TLSPacket, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
 
 const RECORD_LENGTH_BYTES = 3
 
@@ -41,7 +41,7 @@ export function makeTLSClient({
 	const processor = makeMessageProcessor(logger)
 	const { enqueue: enqueueServerPacket } = makeQueue()
 
-	const keyPairs: { [C in keyof typeof SUPPORTED_NAMED_CURVE_MAP]?: KeyPair } = {}
+	const keyPairs: { [C in TLSKeyType]?: KeyPair } = {}
 	let handshakeDone = false
 	let ended = false
 	let sessionId = new Uint8Array()
@@ -51,7 +51,7 @@ export function makeTLSClient({
 	let keys: SharedKeyData | undefined = undefined
 	let recordSendCount = 0
 	let recordRecvCount = 0
-	let keyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP | undefined = undefined
+	let keyType: TLSKeyType | undefined = undefined
 	let connTlsVersion: TLSProtocolVersion | undefined = undefined
 	let clientRandom: Uint8Array | undefined = undefined
 	let serverRandom: Uint8Array | undefined = undefined
@@ -202,12 +202,10 @@ export function makeTLSClient({
 					serverRandom = hello.serverRandom
 					setAlpn(hello.extensions?.ALPN)
 
+					const cipherSuiteData = SUPPORTED_CIPHER_SUITE_MAP[cipherSuite]
+
 					logger.debug(
-						{
-							cipherSuite,
-							connTlsVersion,
-							selectedAlpn,
-						},
+						{ cipherSuite, connTlsVersion, selectedAlpn },
 						'processed server hello'
 					)
 
@@ -216,6 +214,10 @@ export function makeTLSClient({
 							publicKeyType: hello.publicKeyType,
 							publicKey: hello.publicKey
 						})
+					} else if(
+						'isRsaEcdh' in cipherSuiteData && cipherSuiteData.isRsaEcdh
+					) {
+						keyType = 'RSA'
 					}
 
 					break
@@ -235,6 +237,13 @@ export function makeTLSClient({
 					certificates = result.certificates
 
 					logger.debug({ len: certificates.length }, 'parsed certificates')
+
+					if(verifyServerCertificate) {
+						await verifyCertificateChain(certificates, host, rootCAs)
+						logger.debug('verified certificate chain')
+
+						certificatesVerified = true
+					}
 
 					onRecvCertificates?.({ certificates })
 					break
@@ -257,13 +266,6 @@ export function makeTLSClient({
 						publicKey: certificates[0].getPublicKey(),
 						signatureData,
 					})
-
-					if(verifyServerCertificate) {
-						await verifyCertificateChain(certificates, host, rootCAs)
-						logger.debug('verified certificate chain')
-
-						certificatesVerified = true
-					}
 
 					break
 				case SUPPORTED_RECORD_TYPE_MAP.FINISHED:
@@ -347,16 +349,35 @@ export function makeTLSClient({
 				case SUPPORTED_RECORD_TYPE_MAP.SERVER_HELLO_DONE:
 					logger.debug('server hello done')
 					if(!keyType) {
-						throw new Error('Key exchange without key-share not supported')
+						// need to execute client key share
+						throw new Error('Key exchange without key-type not supported')
 					}
 
-					const clientPubKey = keyPairs[keyType]!.pubKey
-					const clientKeyShare = await packClientKeyShare(clientPubKey)
-					await writePacket({
-						type: 'HELLO',
-						data: clientKeyShare
-					})
+					let clientKeyShare: Uint8Array
+					if(keyType === 'RSA') {
+						if(keys) {
+							throw new Error('Keys already computed, despite RSA key type')
+						}
 
+						const {
+							preMasterSecret, encrypted
+						} = await createRsaPreMasterSecret(
+							certificates![0],
+							connTlsVersion!
+						)
+						clientKeyShare = await packClientRsaKeyShare(encrypted)
+						keys = await computeSharedKeysTls12({
+							preMasterSecret: preMasterSecret,
+							clientRandom: clientRandom!,
+							serverRandom: serverRandom!,
+							cipherSuite: cipherSuite!,
+						})
+					} else {
+						clientKeyShare
+							= await packClientCurveKeyShare(keyPairs[keyType]!.pubKey)
+					}
+
+					await writePacket({ type: 'HELLO', data: clientKeyShare })
 					handshakeMsgs.push(clientKeyShare)
 
 					await writeChangeCipherSpec()
@@ -366,10 +387,7 @@ export function makeTLSClient({
 						handshakeMessages: handshakeMsgs,
 						cipherSuite: cipherSuite!,
 					})
-					await writeEncryptedPacket({
-						data: finishMsg,
-						type: 'HELLO',
-					})
+					await writeEncryptedPacket({ data: finishMsg, type: 'HELLO' })
 
 					handshakeMsgs.push(finishMsg)
 
@@ -688,7 +706,7 @@ export function makeTLSClient({
 		onTlsEnd?.(error)
 	}
 
-	async function getKeyPair(keyType: keyof typeof SUPPORTED_NAMED_CURVE_MAP) {
+	async function getKeyPair(keyType: TLSKeyType) {
 		const algorithm = SUPPORTED_NAMED_CURVE_MAP[keyType].algorithm
 		keyPairs[keyType] ??= await crypto.generateKeyPair(algorithm)
 

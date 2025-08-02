@@ -8,6 +8,7 @@ export type SymmetricCryptoAlgorithm = 'AES-128-CBC'
 export type AsymmetricCryptoAlgorithm = 'X25519'
 	| 'P-256' // SECP256R1
 	| 'P-384' // SECP384R1
+export type AsymmetricEncDecAlgorithm = 'RSA-PCKS1_5'
 export type SignatureAlgorithm = 'RSA-PSS-SHA256'
 	| 'ECDSA-SECP384R1-SHA384'
 	| 'ECDSA-SECP256R1-SHA256'
@@ -54,6 +55,13 @@ export type Crypto<K> = {
 	calculateSharedSecret(alg: AsymmetricCryptoAlgorithm, privateKey: K, publicKey: K): Awaitable<Uint8Array>
 
 	randomBytes(length: number): Uint8Array
+	asymmetricEncrypt(
+		cipherSuite: AsymmetricEncDecAlgorithm,
+		opts: {
+			publicKey: Key
+			data: Uint8Array
+		}
+	): Awaitable<Uint8Array>
 	/**
 	 * Encrypts data with the given cipher suite and options.
 	 * Expects padding has already been applied to the data.

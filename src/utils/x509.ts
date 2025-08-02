@@ -42,7 +42,10 @@ export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<pecul
 			return cert.publicKey.algorithm
 		},
 		getPublicKey() {
-			return new Uint8Array(cert.publicKey.rawData)
+			return {
+				buffer: new Uint8Array(cert.publicKey.rawData),
+				algorithm: cert.publicKey.algorithm.name,
+			}
 		},
 		verifyIssued(otherCert) {
 			return otherCert.internal.verify({ publicKey: cert.publicKey })
