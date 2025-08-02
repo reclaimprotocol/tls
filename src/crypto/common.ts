@@ -7,12 +7,12 @@ export function parseRsaPublicKeyFromAsn1(asn1: Uint8Array): RSAPubKey {
 	const parsed = AsnParser.parse(asn1, OriginatorPublicKey)
 	const rsaPubKey = AsnParser.parse(parsed.publicKey, RSAPublicKey)
 	return {
-		e: bufToBigint(toUint8Array(rsaPubKey.publicExponent)),
-		n: bufToBigint(toUint8Array(rsaPubKey.modulus)),
+		e: bufToBigint(bufToUint8Array(rsaPubKey.publicExponent)),
+		n: bufToBigint(bufToUint8Array(rsaPubKey.modulus)),
 	}
 }
 
-function toUint8Array(buf: ArrayBuffer | Uint8Array): Uint8Array {
+export function bufToUint8Array(buf: ArrayBuffer | Uint8Array): Uint8Array {
 	if(buf instanceof Uint8Array) {
 		return buf
 	}

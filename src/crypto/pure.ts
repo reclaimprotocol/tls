@@ -13,9 +13,10 @@ import type { CHash } from '@noble/hashes/utils'
 import { OriginatorPublicKey } from '@peculiar/asn1-cms'
 import { RSAPublicKey } from '@peculiar/asn1-rsa'
 import { AsnParser } from '@peculiar/asn1-schema'
-import { mgf1, PKCS1_SHA256, PKCS1_SHA384, PKCS1_SHA512, PSS, type PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
+import { mgf1, PKCS1_KEM, PKCS1_SHA256, PKCS1_SHA384, PKCS1_SHA512, PSS, type PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
 import type { AsymmetricCryptoAlgorithm, AuthenticatedSymmetricCryptoAlgorithm, Crypto, HashAlgorithm } from '../types'
 import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics'
+import { bufToUint8Array, parseRsaPublicKeyFromAsn1 } from './common'
 
 type MakeCipher
 	= (key: Uint8Array, nonce: Uint8Array, AAD?: Uint8Array) => Cipher
@@ -85,6 +86,13 @@ export const pureJsCrypto: Crypto<Uint8Array> = {
 		}
 
 		return bytes
+	},
+	asymmetricEncrypt(cipherSuite, { publicKey, data }) {
+		if(cipherSuite !== 'RSA-PCKS1_5') {
+			throw new Error(`Unsupported cipher suite ${cipherSuite}`)
+		}
+
+		return PKCS1_KEM.encrypt(parseRsaPublicKeyFromAsn1(publicKey), data)
 	},
 	encrypt(cipherSuite, { key, iv, data }) {
 		if(cipherSuite !== 'AES-128-CBC') {
@@ -176,34 +184,5 @@ export const pureJsCrypto: Crypto<Uint8Array> = {
 
 function parseAsn1PublicKey(pubKey: Uint8Array) {
 	const parsed = AsnParser.parse(pubKey, OriginatorPublicKey)
-	return toUint8Array(parsed.publicKey)
-}
-
-function parseRsaPublicKeyFromAsn1(asn1: Uint8Array): RSAPubKey {
-	const parsed = AsnParser.parse(asn1, OriginatorPublicKey)
-	const rsaPubKey = AsnParser.parse(parsed.publicKey, RSAPublicKey)
-	return {
-		e: bufToBigint(toUint8Array(rsaPubKey.publicExponent)),
-		n: bufToBigint(toUint8Array(rsaPubKey.modulus)),
-	}
-}
-
-function toUint8Array(buf: ArrayBuffer | Uint8Array): Uint8Array {
-	if(buf instanceof Uint8Array) {
-		return buf
-	}
-
-	return new Uint8Array(buf)
-}
-
-const BITS = 8n
-
-function bufToBigint(buf: Uint8Array): bigint {
-	let ret = 0n
-	for(const i of buf.values()) {
-		const bi = BigInt(i)
-		ret = (ret << BITS) + bi
-	}
-
-	return ret
+	return bufToUint8Array(parsed.publicKey)
 }

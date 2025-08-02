@@ -133,7 +133,7 @@ export const hkdfExpand = async(
 	key: Key,
 	expLength: number,
 	info: Uint8Array,
-	crypto: Crypto
+	crypto: Crypto<unknown>
 ) => {
 	info ||= new Uint8Array(0)
 	const infoLength = info.length

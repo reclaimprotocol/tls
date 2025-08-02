@@ -2,9 +2,11 @@ import { ECDSASigValue } from '@peculiar/asn1-ecc'
 import { AsnParser } from '@peculiar/asn1-schema'
 import { ChaCha20Poly1305 } from '@stablelib/chacha20poly1305'
 import type { webcrypto as WebCrypto } from 'crypto'
+import { PKCS1_KEM, PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
 import { AsymmetricCryptoAlgorithm, Crypto } from '../types/crypto'
 import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics'
 import { webcrypto } from '../utils/webcrypto'
+import { parseRsaPublicKeyFromAsn1 } from './common'
 
 const subtle = webcrypto.subtle
 
@@ -28,7 +30,7 @@ const SHARED_KEY_LEN_MAP: { [T in AsymmetricCryptoAlgorithm]: number } = {
 
 const AUTH_TAG_BYTE_LENGTH = 16
 
-export const webCrypto: Crypto<CryptoKey> = {
+export const crypto: Crypto<CryptoKey> = {
 	importKey(alg, raw, ...args) {
 		let subtleArgs: Parameters<typeof subtle.importKey>[2]
 		let keyUsages: Parameters<typeof subtle.importKey>[4]
@@ -105,8 +107,8 @@ export const webCrypto: Crypto<CryptoKey> = {
 			}
 			break
 		case 'RSA-PKCS1-SHA512':
-		case 'RSA-PKCS1-SHA384':
 		case 'RSA-PKCS1-SHA256':
+		case 'RSA-PKCS1-SHA384':
 			keyType = 'spki'
 			keyUsages = ['verify']
 			subtleArgs = {
@@ -116,6 +118,8 @@ export const webCrypto: Crypto<CryptoKey> = {
 					: (alg === 'RSA-PKCS1-SHA384' ? 'SHA-384' : 'SHA-512')
 			}
 			break
+		case 'RSA-PCKS1_5':
+			return parseRsaPublicKeyFromAsn1(raw) as unknown as CryptoKey
 		case 'ECDSA-SECP256R1-SHA256':
 			keyType = 'spki'
 			keyUsages = ['verify']
@@ -145,7 +149,7 @@ export const webCrypto: Crypto<CryptoKey> = {
 		)
 	},
 	async exportKey(key) {
-		// handle ChaCha20-Poly1305
+		// handle ChaCha20-Poly1305, RSA-PCKS1_5
 		// as that's already a Uint8Array
 		if(key instanceof Uint8Array) {
 			return key
@@ -158,18 +162,14 @@ export const webCrypto: Crypto<CryptoKey> = {
 				|| key.algorithm.name === 'ECDH'
 			)
 		) {
-			const form = toUint8Array(
-				await subtle.exportKey('pkcs8', key)
-			)
+			const form = toUint8Array(await subtle.exportKey('pkcs8', key))
 			const algPrefix = key.algorithm.name === 'X25519'
 				? X25519_PRIVATE_KEY_DER_PREFIX
 				: P384_PRIVATE_KEY_DER_PREFIX
 			return form.slice(algPrefix.length)
 		}
 
-		return toUint8Array(
-			await subtle.exportKey('raw', key)
-		)
+		return toUint8Array(await subtle.exportKey('raw', key))
 	},
 	async generateKeyPair(alg) {
 		let genKeyArgs: RsaHashedKeyGenParams | EcKeyGenParams | AlgorithmIdentifier
@@ -199,14 +199,9 @@ export const webCrypto: Crypto<CryptoKey> = {
 		}
 	},
 	async calculateSharedSecret(alg, privateKey, publicKey) {
-		const genKeyName = alg === 'X25519'
-			? 'X25519'
-			: 'ECDH'
+		const genKeyName = alg === 'X25519' ? 'X25519' : 'ECDH'
 		const key = await subtle.deriveBits(
-			{
-				name: genKeyName,
-				public: publicKey,
-			},
+			{ name: genKeyName, public: publicKey },
 			privateKey,
 			8 * SHARED_KEY_LEN_MAP[alg],
 		)
@@ -216,24 +211,22 @@ export const webCrypto: Crypto<CryptoKey> = {
 		const buffer = new Uint8Array(length)
 		return webcrypto.getRandomValues(buffer)
 	},
+	asymmetricEncrypt(cipherSuite, { publicKey, data }) {
+		if(cipherSuite !== 'RSA-PCKS1_5') {
+			throw new Error(`Unsupported cipher suite ${cipherSuite}`)
+		}
+
+		return PKCS1_KEM.encrypt(publicKey as unknown as RSAPubKey, data)
+	},
 	async encrypt(cipherSuite, { iv, data, key }) {
-		const name = cipherSuite === 'AES-128-CBC'
-			? 'AES-CBC'
-			: ''
-		return toUint8Array(
-			await subtle.encrypt(
-				{ name, iv },
-				key,
-				data,
-			)
-		).slice(0, data.length)
+		const name = cipherSuite === 'AES-128-CBC' ? 'AES-CBC' : ''
+		return toUint8Array(await subtle.encrypt({ name, iv }, key, data))
+			.slice(0, data.length)
 	},
 	async decrypt(cipherSuite, opts) {
 		if(cipherSuite === 'AES-128-CBC') {
 			const { decryptAesCbc } = await import('./aes-cbc')
-			const exported = toUint8Array(
-				await subtle.exportKey('raw', opts.key)
-			)
+			const exported = toUint8Array(await subtle.exportKey('raw', opts.key))
 			return decryptAesCbc(exported, opts.iv, opts.data)
 		}
 
@@ -251,11 +244,7 @@ export const webCrypto: Crypto<CryptoKey> = {
 		} else {
 			ciphertext = toUint8Array(
 				await subtle.encrypt(
-					{
-						name: 'AES-GCM',
-						iv,
-						additionalData: aead,
-					},
+					{ name: 'AES-GCM', iv, additionalData: aead },
 					key,
 					data
 				)
@@ -263,10 +252,8 @@ export const webCrypto: Crypto<CryptoKey> = {
 		}
 
 		return {
-			ciphertext: ciphertext
-				.slice(0, -AUTH_TAG_BYTE_LENGTH),
-			authTag: ciphertext
-				.slice(-AUTH_TAG_BYTE_LENGTH),
+			ciphertext: ciphertext.slice(0, -AUTH_TAG_BYTE_LENGTH),
+			authTag: ciphertext.slice(-AUTH_TAG_BYTE_LENGTH),
 		}
 	},
 	async authenticatedDecrypt(cipherSuite, { iv, aead, key, data, authTag }) {
@@ -284,18 +271,12 @@ export const webCrypto: Crypto<CryptoKey> = {
 			const cipher = new ChaCha20Poly1305(rawKey)
 			plaintext = cipher.open(iv, ciphertext, aead)!
 			if(!plaintext) {
-				throw new Error(
-					'Failed to authenticate ChaCha20 ciphertext'
-				)
+				throw new Error('Failed to authenticate ChaCha20 ciphertext')
 			}
 		} else {
 			plaintext = toUint8Array(
 				await subtle.decrypt(
-					{
-						name: 'AES-GCM',
-						iv,
-						additionalData: aead,
-					},
+					{ name: 'AES-GCM', iv, additionalData: aead },
 					key,
 					ciphertext
 				)
@@ -308,14 +289,11 @@ export const webCrypto: Crypto<CryptoKey> = {
 		let verifyArgs: Parameters<typeof subtle.verify>[0]
 		switch (alg) {
 		case 'RSA-PSS-SHA256':
-			verifyArgs = {
-				name: 'RSA-PSS',
-				saltLength: 32
-			}
+			verifyArgs = { name: 'RSA-PSS', saltLength: 32 }
 			break
 		case 'RSA-PKCS1-SHA512':
-		case 'RSA-PKCS1-SHA384':
 		case 'RSA-PKCS1-SHA256':
+		case 'RSA-PKCS1-SHA384':
 			verifyArgs = {
 				name: 'RSASSA-PKCS1-v1_5',
 				hash: alg === 'RSA-PKCS1-SHA256'
@@ -325,28 +303,17 @@ export const webCrypto: Crypto<CryptoKey> = {
 			break
 		case 'ECDSA-SECP256R1-SHA256':
 			signature = convertASN1toRS(signature)
-			verifyArgs = {
-				name: 'ECDSA',
-				hash: 'SHA-256',
-			}
+			verifyArgs = { name: 'ECDSA', hash: 'SHA-256' }
 			break
 		case 'ECDSA-SECP384R1-SHA384':
 			signature = convertASN1toRS(signature)
-			verifyArgs = {
-				name: 'ECDSA',
-				hash: 'SHA-384',
-			}
+			verifyArgs = { name: 'ECDSA', hash: 'SHA-384' }
 			break
 		default:
 			throw new Error(`Unsupported algorithm ${alg}`)
 		}
 
-		return subtle.verify(
-			verifyArgs,
-			publicKey,
-			signature,
-			data,
-		)
+		return subtle.verify(verifyArgs, publicKey, signature, data)
 	},
 	async hash(alg, data) {
 		return toUint8Array(

@@ -710,7 +710,7 @@ export function makeTLSClient({
 		const algorithm = SUPPORTED_NAMED_CURVE_MAP[keyType].algorithm
 		keyPairs[keyType] ??= await crypto.generateKeyPair(algorithm)
 
-		return { algorithm, keyPair: keyPairs[keyType] }
+		return { algorithm, keyPair: keyPairs[keyType]! }
 	}
 
 	return {

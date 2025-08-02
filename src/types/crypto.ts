@@ -47,7 +47,11 @@ export type KeyPair<K = Key> = {
 export type Crypto<K> = {
 	importKey(alg: AuthenticatedSymmetricCryptoAlgorithm | SymmetricCryptoAlgorithm, raw: Uint8Array): Awaitable<K>
 	importKey(alg: HashAlgorithm, raw: Uint8Array): Awaitable<K>
-	importKey(alg: SignatureAlgorithm, raw: Uint8Array, type: 'public'): Awaitable<K>
+	importKey(
+		alg: SignatureAlgorithm | AsymmetricEncDecAlgorithm,
+		raw: Uint8Array,
+		type: 'public'
+	): Awaitable<K>
 	importKey(alg: AsymmetricCryptoAlgorithm, raw: Uint8Array, type: 'private' | 'public'): Awaitable<K>
 	exportKey(key: K): Awaitable<Uint8Array>
 
@@ -58,7 +62,7 @@ export type Crypto<K> = {
 	asymmetricEncrypt(
 		cipherSuite: AsymmetricEncDecAlgorithm,
 		opts: {
-			publicKey: Key
+			publicKey: K
 			data: Uint8Array
 		}
 	): Awaitable<Uint8Array>
