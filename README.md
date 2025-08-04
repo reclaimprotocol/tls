@@ -4,9 +4,9 @@
     </div>
 </div>
 
-A TLS client implementation in typescript. This library is fully compatible with the browser (without any polyfills) and on Node Js. 
+A TLS client implementation in typescript. This library is fully compatible with the browser (without any polyfills), and on any other JavaScript environment.
 
-As all the cryptography is handled by webcrypto -- running on React native requires a polyfill for the "WebCrypto" module.
+As all the cryptography is handled by either "webcrypto" or a "pure-js" implementation if webcrypto is not available.
 
 ## Dependencies
 
@@ -47,8 +47,6 @@ As all the cryptography is handled by webcrypto -- running on React native requi
 - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
 - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
 
-Note: AES-CBC only works correctly on NodeJs.
-
 ### Certificates
 - The entire Mozilla CA store is supported
 - A few additional certificates have also been added. See `src/utils/root-ca.ts`
@@ -60,7 +58,27 @@ Edge version:
 npm i git+https://github.com/reclaimprotocol/tls
 ```
 
+## Set Crypto Implementation
+
+When on the browser, NodeJS or another NodeJS like runtime (such as Bun), you can set the crypto implementation to use the native `webcrypto` API. This is the most performant way to use this library.
+``` ts
+import { setCryptoImplementation } from '@reclaimprotocol/tls'
+import { webcryptoCrypto } from '@reclaimprotocol/tls/webcrypto'
+
+setCryptoImplementation(webcryptoCrypto)
+```
+
+If webcrypto is not available, you can use the `pure-js` implementation. This is slower, but works in all JavaScript environments -- even JavascriptCore.
+``` ts
+import { setCryptoImplementation } from '@reclaimprotocol/tls'
+import { pureJsCrypto } from '@reclaimprotocol/tls/pure-js'
+
+setCryptoImplementation(pureJsCrypto)
+```
+
 ## Example Usage
+
+After you've set the crypto implementation, you can use the TLS client like this:
 
 ``` ts
 import { Socket } from 'net'
