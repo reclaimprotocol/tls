@@ -1,7 +1,9 @@
+import assert from 'node:assert'
+import { describe, it } from 'node:test'
 import type { TLSPacket } from '../types/index.ts'
 import { logger } from '../utils/index.ts'
 import { makeMessageProcessor } from '../utils/index.ts'
-import { expectBuffsEq } from '../utils/index.ts'
+import { expectBuffsEq } from './utils.ts'
 
 describe('TLS Message Processor', () => {
 
@@ -10,7 +12,7 @@ describe('TLS Message Processor', () => {
 		const pkts = processor.onData(
 			Buffer.from('15030300050101010101', 'hex')
 		)
-		expect(pkts.length).toBe(1)
+		assert.equal(pkts.length, 1)
 		expectBuffsEq(pkts[0].header, Buffer.from('1503030005', 'hex'))
 		expectBuffsEq(pkts[0].content, Buffer.from('0101010101', 'hex'))
 	})
@@ -21,9 +23,9 @@ describe('TLS Message Processor', () => {
 		for(let i = 0;i < buffer.length;i++) {
 			const pkts = processor.onData(buffer.subarray(i, i + 1))
 			if(i < buffer.length - 1) {
-				expect(pkts.length).toBe(0)
+				assert.equal(pkts.length, 0)
 			} else {
-				expect(pkts.length).toBe(1)
+				assert.equal(pkts.length, 1)
 				expectBuffsEq(pkts[0].content, Buffer.from('0101010101', 'hex'))
 			}
 		}
@@ -38,7 +40,7 @@ describe('TLS Message Processor', () => {
 		const pkts = processor.onData(
 			Buffer.concat(buffers)
 		)
-		expect(pkts.length).toBe(2)
+		assert.equal(pkts.length, 2)
 		expectBuffsEq(pkts[0].content, Buffer.from('0101010101', 'hex'))
 		expectBuffsEq(pkts[1].content, Buffer.from('010101010101', 'hex'))
 	})
@@ -53,10 +55,9 @@ describe('TLS Message Processor', () => {
 		)
 		const finalBuffer = Buffer.from('010101010101', 'hex')
 		const pkts = processor.onData(msgAndHalfBuffer)
-		expect(pkts.length).toBe(1)
-
+		assert.equal(pkts.length, 1)
 		const pkts2 = processor.onData(finalBuffer)
-		expect(pkts2.length).toBe(1)
+		assert.equal(pkts2.length, 1)
 	})
 
 	// eslint-disable-next-line unicorn/consistent-function-scoping

@@ -1,12 +1,11 @@
-import { crypto, setCryptoImplementation } from '../crypto/index.ts'
-import { pureJsCrypto } from '../crypto/pure.ts'
+import assert from 'node:assert'
+import { describe, it } from 'node:test'
+import { crypto } from '../crypto/index.ts'
 import type { TLSPresharedKey } from '../types/index.ts'
 import { computeBinderSuffix, computeSharedKeys, computeSharedKeysTls12, encryptWrappedRecord, expectReadWithLength, getPskFromTicket, getSignatureDataTls13, loadX509FromPem, packPresharedKeyExtension, parseSessionTicket, toHexStringWithWhitespace, verifyCertificateChain, verifyCertificateSignature } from '../utils/index.ts'
-import { bufferFromHexStringWithWhitespace, expectBuffsEq } from '../utils/index.ts'
+import { bufferFromHexStringWithWhitespace, expectBuffsEq } from './utils.ts'
 
 const curve = 'X25519'
-
-setCryptoImplementation(pureJsCrypto)
 
 describe('Crypto Tests', () => {
 
@@ -26,7 +25,8 @@ describe('Crypto Tests', () => {
 			),
 		)
 
-		expect(toHexStringWithWhitespace(masterKey, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(masterKey, ''),
 			'df4a291baa1eb7cfa6934b29b474baad2697e29f1f920dcc77c8a0a088447624'
 		)
 
@@ -44,13 +44,16 @@ describe('Crypto Tests', () => {
 			cipherSuite: 'TLS_CHACHA20_POLY1305_SHA256'
 		})
 
-		expect(toHexStringWithWhitespace(result.masterSecret, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(result.masterSecret, ''),
 			'fb9fc80689b3a5d02c33243bf69a1b1b20705588a794304a6e7120155edf149a'
 		)
-		expect(toHexStringWithWhitespace(result.clientSecret, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(result.clientSecret, ''),
 			'39df949cf723c7b3a398bfc9902837f9e762c632e868131b19d946b9ec01bb78'
 		)
-		expect(toHexStringWithWhitespace(result.serverIv, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(result.serverIv, ''),
 			'151187a208b0f49ba2a81084'
 		)
 	})
@@ -75,18 +78,20 @@ describe('Crypto Tests', () => {
 		const clientEncKey = await crypto.exportKey(result.clientEncKey)
 		const serverEncKey = await crypto.exportKey(result.serverEncKey)
 		const clientMacKey = await crypto.exportKey(result.clientMacKey)
-		expect(
-			toHexStringWithWhitespace(result.masterSecret, '')
-		).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(result.masterSecret, ''),
 			'916abf9da55973e13614ae0a3f5d3f37b023ba129aee02cc9134338127cd7049781c8e19fc1eb2a7387ac06ae237344c'
 		)
-		expect(toHexStringWithWhitespace(clientEncKey, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(clientEncKey, ''),
 			'f656d037b173ef3e11169f27231a84b6'
 		)
-		expect(toHexStringWithWhitespace(serverEncKey, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(serverEncKey, ''),
 			'752a18e7a9fcb7cbcdd8f98dd8f769eb'
 		)
-		expect(toHexStringWithWhitespace(clientMacKey, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(clientMacKey, ''),
 			'1b7d117c7d5f690bc263cae8ef60af0f1878acc2'
 		)
 	})
@@ -119,10 +124,11 @@ describe('Crypto Tests', () => {
 			}
 		)
 
-		expect(
-			toHexStringWithWhitespace(ciphertext)
-		).toEqual(
-			'40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 22 7b c9 ba 81 ef 30 f2 a8 a7 8f f1 df 50 84 4d 58 04 b7 ee b2 e2 14 c3 2b 68 92 ac a3 db 7b 78 07 7f dd 90 06 7c 51 6b ac b3 ba 90 de df 72 0f'
+		assert.equal(
+			toHexStringWithWhitespace(ciphertext),
+			'40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 22 7b c9 ba 81'
+			+ ' ef 30 f2 a8 a7 8f f1 df 50 84 4d 58 04 b7 ee b2 e2 14 c3 2b'
+			+ ' 68 92 ac a3 db 7b 78 07 7f dd 90 06 7c 51 6b ac b3 ba 90 de df 72 0f'
 		)
 	})
 
@@ -141,7 +147,8 @@ describe('Crypto Tests', () => {
 			)
 		)
 
-		expect(toHexStringWithWhitespace(masterKey, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(masterKey, ''),
 			'df4a291baa1eb7cfa6934b29b474baad2697e29f1f920dcc77c8a0a088447624'
 		)
 
@@ -181,10 +188,12 @@ describe('Crypto Tests', () => {
 		})
 		const clientEncKey = await crypto.exportKey(result.clientEncKey)
 
-		expect(toHexStringWithWhitespace(result.serverIv, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(result.serverIv, ''),
 			'a5e665c5599c95eeab6eb657'
 		)
-		expect(toHexStringWithWhitespace(clientEncKey, '')).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(clientEncKey, ''),
 			'40c54418e38e52d5b976c0feca905eb8261604c2efcfabad39a060ddb7ab4bc8'
 		)
 	})
@@ -212,7 +221,7 @@ describe('Crypto Tests', () => {
 			// which should give us the session ticket
 			expectReadWithLength(ticketPacked.slice(1), 3)
 		)
-		expect(Array.from(parsed.nonce)).toEqual([0, 0])
+		assert.deepEqual(Array.from(parsed.nonce), [0, 0])
 
 		const ticketData = await getPskFromTicket(parsed, {
 			masterKey: bufferFromHexStringWithWhitespace(
@@ -342,10 +351,12 @@ describe('Crypto Tests', () => {
 		})
 		const serverEncKey = await crypto.exportKey(keys.serverEncKey)
 
-		expect(toHexStringWithWhitespace(serverEncKey)).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(serverEncKey),
 			'a6 7e 92 e7 8c 02 8e 0c 52 33 fb 0b 3c e3 df 6a f0 39 62 eb 06 bc 0c 92 93 d8 4a 49 ca 44 4f f4'
 		)
-		expect(toHexStringWithWhitespace(keys.clientIv)).toEqual(
+		assert.equal(
+			toHexStringWithWhitespace(keys.clientIv),
 			'eb 50 c1 6b e7 65 4a bf 99 dd 06 d9'
 		)
 	})
@@ -359,10 +370,11 @@ AwAxAAAA
 -----END CERTIFICATE-----`)
 		]
 
-		await expect(
-			verifyCertificateChain(certs, 'github.com')
-		).rejects.toThrowError(
-			'Certificate is not for host github.com'
+		await assert.rejects(
+			() => verifyCertificateChain(certs, 'github.com'),
+			(err: Error) => {
+				return err.message === 'Certificate is not for host github.com'
+			}
 		)
 	})
 
@@ -408,7 +420,7 @@ AwAxAAAA
 				)
 			}
 		)
-		expect(result).toBe(true)
+		assert.ok(result)
 
 		const result2 = await crypto.verify(
 			'ECDSA-SECP256R1-SHA256',
@@ -422,6 +434,6 @@ AwAxAAAA
 				)
 			}
 		)
-		expect(result2).toBe(true)
+		assert.ok(result2)
 	})
 })

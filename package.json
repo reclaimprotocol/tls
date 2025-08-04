@@ -7,7 +7,8 @@
 	"scripts": {
 		"build": "npm exec tsc -- -p tsconfig.build.json",
 		"run:tsc": "node --experimental-strip-types",
-		"test": "jest",
+		"test:purejs-crypto": "npm run run:tsc -- --import=./src/tests/load-purejs-crypto.ts --test",
+		"test:webcrypto": "npm run run:tsc -- --import=./src/tests/load-webcrypto.ts --test",
 		"lint": "eslint . --ext .js,.ts,.jsx,.tsx",
 		"lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx",
 		"prepare": "npm run build",

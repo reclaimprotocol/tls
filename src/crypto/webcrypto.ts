@@ -31,7 +31,7 @@ const SHARED_KEY_LEN_MAP: { [T in AsymmetricCryptoAlgorithm]: number } = {
 
 const AUTH_TAG_BYTE_LENGTH = 16
 
-export const crypto: Crypto<WebCrypto.CryptoKey> = {
+export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 	importKey(alg, raw, ...args) {
 		let subtleArgs: Parameters<typeof subtle.importKey>[2]
 		let keyUsages: Parameters<typeof subtle.importKey>[4]

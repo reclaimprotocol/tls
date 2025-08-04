@@ -1,4 +1,4 @@
-import './additional-root-cas'
+import './additional-root-cas.js'
 import { crypto } from '../crypto/index.ts'
 import type { CertificatePublicKey, CipherSuite, Key, TLSProcessContext, X509Certificate } from '../types/index.ts'
 import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants.ts'
