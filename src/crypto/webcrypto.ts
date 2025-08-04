@@ -2,11 +2,12 @@ import { ECDSASigValue } from '@peculiar/asn1-ecc'
 import { AsnParser } from '@peculiar/asn1-schema'
 import { ChaCha20Poly1305 } from '@stablelib/chacha20poly1305'
 import type { webcrypto as WebCrypto } from 'crypto'
-import { PKCS1_KEM, PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
-import { AsymmetricCryptoAlgorithm, Crypto } from '../types/crypto'
-import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics'
-import { webcrypto } from '../utils/webcrypto'
-import { parseRsaPublicKeyFromAsn1 } from './common'
+import type { PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
+import { PKCS1_KEM } from 'micro-rsa-dsa-dh/rsa.js'
+import type { AsymmetricCryptoAlgorithm, Crypto } from '../types/crypto.ts'
+import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics.ts'
+import { webcrypto } from '../utils/webcrypto.ts'
+import { parseRsaPublicKeyFromAsn1 } from './common.ts'
 
 const subtle = webcrypto.subtle
 
@@ -30,7 +31,7 @@ const SHARED_KEY_LEN_MAP: { [T in AsymmetricCryptoAlgorithm]: number } = {
 
 const AUTH_TAG_BYTE_LENGTH = 16
 
-export const crypto: Crypto<CryptoKey> = {
+export const crypto: Crypto<WebCrypto.CryptoKey> = {
 	importKey(alg, raw, ...args) {
 		let subtleArgs: Parameters<typeof subtle.importKey>[2]
 		let keyUsages: Parameters<typeof subtle.importKey>[4]
@@ -54,7 +55,7 @@ export const crypto: Crypto<CryptoKey> = {
 		case 'CHACHA20-POLY1305':
 			// chaCha20 is not supported by webcrypto
 			// so we "fake" create a key
-			return raw as unknown as CryptoKey
+			return raw as unknown as WebCrypto.CryptoKey
 		case 'SHA-1':
 		case 'SHA-256':
 		case 'SHA-384':
@@ -119,7 +120,7 @@ export const crypto: Crypto<CryptoKey> = {
 			}
 			break
 		case 'RSA-PCKS1_5':
-			return parseRsaPublicKeyFromAsn1(raw) as unknown as CryptoKey
+			return parseRsaPublicKeyFromAsn1(raw) as unknown as WebCrypto.CryptoKey
 		case 'ECDSA-SECP256R1-SHA256':
 			keyType = 'spki'
 			keyUsages = ['verify']
@@ -140,13 +141,8 @@ export const crypto: Crypto<CryptoKey> = {
 			throw new Error(`Unsupported algorithm ${alg}`)
 		}
 
-		return subtle.importKey(
-			keyType,
-			raw,
-			subtleArgs,
-			true,
-			keyUsages
-		)
+		return subtle
+			.importKey(keyType, raw, subtleArgs, true, keyUsages)
 	},
 	async exportKey(key) {
 		// handle ChaCha20-Poly1305, RSA-PCKS1_5
@@ -172,7 +168,9 @@ export const crypto: Crypto<CryptoKey> = {
 		return toUint8Array(await subtle.exportKey('raw', key))
 	},
 	async generateKeyPair(alg) {
-		let genKeyArgs: RsaHashedKeyGenParams | EcKeyGenParams | AlgorithmIdentifier
+		let genKeyArgs: WebCrypto.RsaHashedKeyGenParams
+			| WebCrypto.EcKeyGenParams
+			| WebCrypto.AlgorithmIdentifier
 		switch (alg) {
 		case 'P-384':
 		case 'P-256':
@@ -225,7 +223,7 @@ export const crypto: Crypto<CryptoKey> = {
 	},
 	async decrypt(cipherSuite, opts) {
 		if(cipherSuite === 'AES-128-CBC') {
-			const { decryptAesCbc } = await import('./aes-cbc')
+			const { decryptAesCbc } = await import('./aes-cbc.ts')
 			const exported = toUint8Array(await subtle.exportKey('raw', opts.key))
 			return decryptAesCbc(exported, opts.iv, opts.data)
 		}

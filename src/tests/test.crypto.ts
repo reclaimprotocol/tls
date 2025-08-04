@@ -1,8 +1,8 @@
-import { crypto, setCryptoImplementation } from '../crypto'
-import { pureJsCrypto } from '../crypto/pure'
-import type { TLSPresharedKey } from '../types'
-import { computeBinderSuffix, computeSharedKeys, computeSharedKeysTls12, encryptWrappedRecord, expectReadWithLength, getPskFromTicket, getSignatureDataTls13, loadX509FromPem, packPresharedKeyExtension, parseSessionTicket, toHexStringWithWhitespace, verifyCertificateChain, verifyCertificateSignature } from '../utils'
-import { bufferFromHexStringWithWhitespace, expectBuffsEq } from './utils'
+import { crypto, setCryptoImplementation } from '../crypto/index.ts'
+import { pureJsCrypto } from '../crypto/pure.ts'
+import type { TLSPresharedKey } from '../types/index.ts'
+import { computeBinderSuffix, computeSharedKeys, computeSharedKeysTls12, encryptWrappedRecord, expectReadWithLength, getPskFromTicket, getSignatureDataTls13, loadX509FromPem, packPresharedKeyExtension, parseSessionTicket, toHexStringWithWhitespace, verifyCertificateChain, verifyCertificateSignature } from '../utils/index.ts'
+import { bufferFromHexStringWithWhitespace, expectBuffsEq } from '../utils/index.ts'
 
 const curve = 'X25519'
 
@@ -74,7 +74,7 @@ describe('Crypto Tests', () => {
 
 		const clientEncKey = await crypto.exportKey(result.clientEncKey)
 		const serverEncKey = await crypto.exportKey(result.serverEncKey)
-		const clientMacKey = await crypto.exportKey(result.clientMacKey!)
+		const clientMacKey = await crypto.exportKey(result.clientMacKey)
 		expect(
 			toHexStringWithWhitespace(result.masterSecret, '')
 		).toEqual(

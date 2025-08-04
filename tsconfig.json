@@ -1,28 +1,25 @@
 {
   "compilerOptions": {
-    "target": "es2022",
-    "module": "commonjs",
-    "allowJs": true,
-    "checkJs": false,
+    "lib": ["ESNext"],
+    "moduleResolution": "nodenext",
+    "module": "nodenext",
     "outDir": "lib",
     "strict": false,
-    "strictNullChecks": true,
-    "noImplicitThis": true,
-    "esModuleInterop": true,
     "skipLibCheck": true,
+    "erasableSyntaxOnly": true,
+    "rewriteRelativeImportExtensions": true,
     "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "resolveJsonModule": true,
-    "lib": [ "es2022", "DOM" ]
+    "allowJs": true,
+    "checkJs": false,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "declaration": true
   },
   "include": [
-    "src/*.ts", 
     "src/**/*.ts",
     "src/**/*.js"
   ],
   "exclude": [
-    "node_modules", 
-    "src/tests",
-    "src/scripts"
+    "node_modules"
   ]
 }

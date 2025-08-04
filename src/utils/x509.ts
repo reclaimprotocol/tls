@@ -1,8 +1,8 @@
 import * as peculiar from '@peculiar/x509'
 import { SubjectAlternativeNameExtension } from '@peculiar/x509'
 // not using types/index to avoid circular dependency
-import type { X509Certificate } from '../types'
-import { webcrypto } from './webcrypto'
+import type { X509Certificate } from '../types/index.ts'
+import { webcrypto } from './webcrypto.ts'
 
 peculiar.cryptoProvider.set(webcrypto)
 
@@ -42,9 +42,6 @@ export function loadX509FromPem(
 			var s = cert.subject
 
 			return i === s
-		},
-		getPublicKeyAlgorithm() {
-			return cert.publicKey.algorithm
 		},
 		getPublicKey() {
 			return {

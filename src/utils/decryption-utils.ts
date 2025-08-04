@@ -1,8 +1,8 @@
-import { crypto } from '../crypto'
-import { CipherSuite, HashAlgorithm } from '../types'
-import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { concatenateUint8Arrays, hkdfExpand, isSymmetricCipher, strToUint8Array, uint8ArrayToDataView } from './generics'
-import { packWithLength } from './packets'
+import { crypto } from '../crypto/index.ts'
+import type { CipherSuite, HashAlgorithm } from '../types/index.ts'
+import { SUPPORTED_CIPHER_SUITE_MAP } from './constants.ts'
+import { concatenateUint8Arrays, hkdfExpand, isSymmetricCipher, strToUint8Array, uint8ArrayToDataView } from './generics.ts'
+import { packWithLength } from './packets.ts'
 
 type DeriveTrafficKeysOptions = {
 	masterSecret: Uint8Array

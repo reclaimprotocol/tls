@@ -1,9 +1,9 @@
-import { crypto } from '../crypto'
-import { CipherSuite } from '../types'
-import { getHash, getPrfHashAlgorithm, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
-import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_RECORD_TYPE_MAP } from './constants'
-import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
-import { packWith3ByteLength, packWithLength } from './packets'
+import { crypto } from '../crypto/index.ts'
+import type { CipherSuite } from '../types/index.ts'
+import { getHash, getPrfHashAlgorithm, hkdfExtractAndExpandLabel } from '../utils/decryption-utils.ts'
+import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_RECORD_TYPE_MAP } from './constants.ts'
+import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics.ts'
+import { packWith3ByteLength, packWithLength } from './packets.ts'
 
 type VerifyFinishMessageOptions = {
 	secret: Uint8Array

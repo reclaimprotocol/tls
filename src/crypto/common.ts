@@ -1,7 +1,7 @@
 import { OriginatorPublicKey } from '@peculiar/asn1-cms'
 import { RSAPublicKey } from '@peculiar/asn1-rsa'
 import { AsnParser } from '@peculiar/asn1-schema'
-import { PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
+import type { PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
 
 export function parseRsaPublicKeyFromAsn1(asn1: Uint8Array): RSAPubKey {
 	const parsed = AsnParser.parse(asn1, OriginatorPublicKey)

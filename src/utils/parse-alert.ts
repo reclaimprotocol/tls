@@ -1,5 +1,5 @@
-import { ALERT_DESCRIPTION, ALERT_LEVEL } from './constants'
-import { uint8ArrayToDataView } from './generics'
+import { ALERT_DESCRIPTION, ALERT_LEVEL } from './constants.ts'
+import { uint8ArrayToDataView } from './generics.ts'
 
 const ALERT_LEVEL_ENTRIES = Object
 	.entries(ALERT_LEVEL) as [keyof typeof ALERT_LEVEL, number][]

@@ -1,7 +1,7 @@
-import { TLSPacket } from '../types'
-import { logger } from '../utils'
-import { makeMessageProcessor } from '../utils'
-import { expectBuffsEq } from './utils'
+import type { TLSPacket } from '../types/index.ts'
+import { logger } from '../utils/index.ts'
+import { makeMessageProcessor } from '../utils/index.ts'
+import { expectBuffsEq } from '../utils/index.ts'
 
 describe('TLS Message Processor', () => {
 

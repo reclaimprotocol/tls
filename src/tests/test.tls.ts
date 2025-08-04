@@ -1,10 +1,10 @@
 import Chance from 'chance'
 import { Socket } from 'net'
-import { pureJsCrypto } from '../crypto/pure'
-import { CipherSuite, TLSClientOptions, TLSPresharedKey, TLSSessionTicket } from '../types'
+import { pureJsCrypto } from '../crypto/pure.ts'
+import type { CipherSuite, TLSClientOptions, TLSPresharedKey, TLSSessionTicket } from '../types/index.ts'
+import { delay, logger } from '../utils/index.ts'
 import { crypto, makeTLSClient, setCryptoImplementation, strToUint8Array, SUPPORTED_NAMED_CURVE_MAP } from '..'
-import { createMockTLSServer } from './mock-tls-server'
-import { delay, logger } from './utils'
+import { createMockTLSServer } from './mock-tls-server.ts'
 
 setCryptoImplementation(pureJsCrypto)
 
@@ -229,9 +229,9 @@ describe.each(TLS_VERSIONS)('%s Tests', (tlsversion) => {
 
 		const newKey = tls.getKeys()?.clientEncKey
 		expect(
-			await crypto.exportKey(newKey!)
+			await crypto.exportKey(newKey)
 		).not.toEqual(
-			await crypto.exportKey(oldKey!)
+			await crypto.exportKey(oldKey)
 		)
 
 		socket.end()

@@ -1,6 +1,6 @@
-import { Logger, ProcessPacket, TLSProtocolVersion } from '../types'
-import { PACKET_TYPE, TLS_PROTOCOL_VERSION_MAP } from './constants'
-import { concatenateUint8Arrays, uint8ArrayToDataView } from './generics'
+import type { Logger, ProcessPacket, TLSProtocolVersion } from '../types/index.ts'
+import { PACKET_TYPE, TLS_PROTOCOL_VERSION_MAP } from './constants.ts'
+import { concatenateUint8Arrays, uint8ArrayToDataView } from './generics.ts'
 
 type PacketType = keyof typeof PACKET_TYPE
 
@@ -102,7 +102,7 @@ export function packWithLength(data: Uint8Array) {
 export function makeMessageProcessor(logger: Logger) {
 	let currentMessageType: number | undefined = undefined
 	let currentMessageHeader: Uint8Array | undefined = undefined
-	let buffer = new Uint8Array(0)
+	let buffer: Uint8Array = new Uint8Array(0)
 	let bytesLeft = 0
 
 	return {

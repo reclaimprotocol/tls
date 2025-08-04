@@ -1,8 +1,8 @@
-import { crypto } from '../crypto'
-import { Key, TLSProtocolVersion, X509Certificate } from '../types'
-import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from './constants'
-import { areUint8ArraysEqual, concatenateUint8Arrays } from './generics'
-import { expectReadWithLength, packWith3ByteLength, packWithLength } from './packets'
+import { crypto } from '../crypto/index.ts'
+import type { Key, TLSProtocolVersion, X509Certificate } from '../types/index.ts'
+import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from './constants.ts'
+import { areUint8ArraysEqual, concatenateUint8Arrays } from './generics.ts'
+import { expectReadWithLength, packWith3ByteLength, packWithLength } from './packets.ts'
 
 export async function packClientCurveKeyShare(publicKey: Key) {
 	return concatenateUint8Arrays([

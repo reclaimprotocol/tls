@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs'
-import { createServer, TlsOptions } from 'tls'
+import type { TlsOptions } from 'tls'
+import { createServer } from 'tls'
 
 // TLS echo server
 export function createMockTLSServer(

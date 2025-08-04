@@ -11,12 +11,11 @@ import { sha1 } from '@noble/hashes/legacy'
 import { sha256, sha384 } from '@noble/hashes/sha2'
 import type { CHash } from '@noble/hashes/utils'
 import { OriginatorPublicKey } from '@peculiar/asn1-cms'
-import { RSAPublicKey } from '@peculiar/asn1-rsa'
 import { AsnParser } from '@peculiar/asn1-schema'
-import { mgf1, PKCS1_KEM, PKCS1_SHA256, PKCS1_SHA384, PKCS1_SHA512, PSS, type PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
-import type { AsymmetricCryptoAlgorithm, AuthenticatedSymmetricCryptoAlgorithm, Crypto, HashAlgorithm } from '../types'
-import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics'
-import { bufToUint8Array, parseRsaPublicKeyFromAsn1 } from './common'
+import { mgf1, PKCS1_KEM, PKCS1_SHA256, PKCS1_SHA384, PKCS1_SHA512, PSS } from 'micro-rsa-dsa-dh/rsa.js'
+import type { AsymmetricCryptoAlgorithm, AuthenticatedSymmetricCryptoAlgorithm, Crypto, HashAlgorithm } from '../types/index.ts'
+import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics.ts'
+import { bufToUint8Array, parseRsaPublicKeyFromAsn1 } from './common.ts'
 
 type MakeCipher
 	= (key: Uint8Array, nonce: Uint8Array, AAD?: Uint8Array) => Cipher

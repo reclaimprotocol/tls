@@ -1,5 +1,5 @@
-import type { AuthenticatedSymmetricCryptoAlgorithm, Crypto, HashAlgorithm, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
-import { TLS_PROTOCOL_VERSION_MAP } from './constants'
+import type { AuthenticatedSymmetricCryptoAlgorithm, Crypto, HashAlgorithm, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types/index.ts'
+import { TLS_PROTOCOL_VERSION_MAP } from './constants.ts'
 
 /**
  * Converts a buffer to a hex string with whitespace between each byte
@@ -20,7 +20,9 @@ export function xor(a: Uint8Array, b: Uint8Array) {
 	return result
 }
 
-export function concatenateUint8Arrays(arrays: Uint8Array[]) {
+export function concatenateUint8Arrays(
+	arrays: Uint8Array[]
+): Uint8Array {
 	const totalLength = arrays.reduce((acc, curr) => acc + curr.length, 0)
 	const result = new Uint8Array(totalLength)
 	let offset = 0

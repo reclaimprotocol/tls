@@ -1,4 +1,4 @@
-import { Logger } from '../types'
+import type { Logger } from '../types/index.ts'
 
 export const logger: Logger = {
 	info: console.info.bind(console),

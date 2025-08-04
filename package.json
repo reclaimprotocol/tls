@@ -1,11 +1,12 @@
 {
 	"name": "@reclaimprotocol/tls",
-	"version": "0.0.9",
+	"version": "0.1.0",
 	"description": "WebCrypto Based Cross Platform TLS",
 	"main": "lib/index",
+	"type": "module",
 	"scripts": {
-		"build": "npm exec tsc",
-		"run:tsc": "SWC_NODE_IGNORE_DYNAMIC=true node -r @swc-node/register",
+		"build": "npm exec tsc -- -p tsconfig.build.json",
+		"run:tsc": "node --experimental-strip-types",
 		"test": "jest",
 		"lint": "eslint . --ext .js,.ts,.jsx,.tsx",
 		"lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx",
@@ -53,18 +54,13 @@
 		"@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",
 		"@commitlint/cli": "^17.8.1",
 		"@commitlint/config-conventional": "^17.8.1",
-		"@swc-node/register": "^1.10.9",
-		"@swc/jest": "^0.2.39",
 		"@types/chance": "^1.1.6",
-		"@types/jest": "^29.5.14",
-		"@types/node": "^20.17.9",
+		"@types/node": "^22.0.0",
 		"@typescript-eslint/eslint-plugin": "^8.17.0",
 		"chance": "^1.1.12",
 		"csv-parse": "^5.6.0",
 		"eslint": "^8.57.1",
-		"jest": "^29.7.0",
 		"pino": "^9.5.0",
-		"ts-node": "^10.9.2",
-		"typescript": "^4.9.5"
+		"typescript": "^5.0.0"
 	}
 }

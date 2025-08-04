@@ -1,12 +1,12 @@
 import './additional-root-cas'
-import { crypto } from '../crypto'
-import type { CertificatePublicKey, CipherSuite, Key, TLSProcessContext, X509Certificate } from '../types'
-import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants'
-import { getHash } from './decryption-utils'
-import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics'
-import { MOZILLA_ROOT_CA_LIST } from './mozilla-root-cas'
-import { expectReadWithLength, packWithLength } from './packets'
-import { loadX509FromDer, loadX509FromPem } from './x509'
+import { crypto } from '../crypto/index.ts'
+import type { CertificatePublicKey, CipherSuite, Key, TLSProcessContext, X509Certificate } from '../types/index.ts'
+import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants.ts'
+import { getHash } from './decryption-utils.ts'
+import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics.ts'
+import { MOZILLA_ROOT_CA_LIST } from './mozilla-root-cas.ts'
+import { expectReadWithLength, packWithLength } from './packets.ts'
+import { loadX509FromDer, loadX509FromPem } from './x509.ts'
 
 type VerifySignatureOptions = {
 	signature: Uint8Array

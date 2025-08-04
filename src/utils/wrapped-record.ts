@@ -1,8 +1,9 @@
-import { crypto } from '../crypto'
-import { AuthenticatedSymmetricCryptoAlgorithm, CipherSuite, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
-import { AUTH_TAG_BYTE_LENGTH, SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { areUint8ArraysEqual, concatenateUint8Arrays, generateIV, isSymmetricCipher, padTls, toHexStringWithWhitespace, uint8ArrayToDataView, unpadTls } from './generics'
-import { PacketHeaderOptions, packPacketHeader } from './packets'
+import { crypto } from '../crypto/index.ts'
+import type { AuthenticatedSymmetricCryptoAlgorithm, CipherSuite, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types/index.ts'
+import { AUTH_TAG_BYTE_LENGTH, SUPPORTED_CIPHER_SUITE_MAP } from './constants.ts'
+import { areUint8ArraysEqual, concatenateUint8Arrays, generateIV, isSymmetricCipher, padTls, toHexStringWithWhitespace, uint8ArrayToDataView, unpadTls } from './generics.ts'
+import type { PacketHeaderOptions } from './packets.ts'
+import { packPacketHeader } from './packets.ts'
 
 type WrappedRecordMacGenOptions = {
 	macKey?: Key

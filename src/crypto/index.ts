@@ -1,4 +1,4 @@
-import type { Crypto } from '../types'
+import type { Crypto } from '../types/index.ts'
 
 export const crypto = {} as Crypto<unknown>
 
