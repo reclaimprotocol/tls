@@ -164,12 +164,25 @@ Use the TLS KeyUpdate method to update the traffic keys. This sends a KeyUpdate 
 await tls.updateTrafficKeys()
 ```
 
-### Testing Connections
+## Testing
+
+Once you clone the repository, install dependencies via `npm i`, you can run the tests using:
+```bash
+npm run test:webcrypto
+```
+to test the WebCrypto implementation, or
+```bash
+npm run test:pure-js
+```
+to test the PureJS implementation.
 
 If you want to test a connection to a host, you can use the `handshake.ts` script. This script will connect to the specified host and port, perform a TLS handshake, and log the result.
 ```bash
 npm run handshake -- --host www.google.com
 ```
+
+if you want to test `javascriptcore` compatibility, you can run the [jsc](/src/tests/jsc.test_mac.ts) test. This will run the tests in a JavaScriptCore environment, which is useful for testing compatibility with an ECMAScript environment that does not support WebCrypto.
+Before you run the `jsc` test, make sure you have the `jsc` binary installed on your system & have built the `jsc` file using the `npm run build:jsc` command.
 
 ## Updating CA certificates
 ```bash
