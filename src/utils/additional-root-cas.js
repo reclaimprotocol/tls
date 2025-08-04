@@ -1,10 +1,12 @@
 /* eslint indent: 0 */
 
-let list
-if(typeof global === 'object' && global) {
-	list = (global.TLS_ADDITIONAL_ROOT_CA_LIST ||= [])
+let TLS_ADDITIONAL_ROOT_CA_LIST
+if(typeof globalThis === 'object' && globalThis) {
+	TLS_ADDITIONAL_ROOT_CA_LIST = (globalThis.TLS_ADDITIONAL_ROOT_CA_LIST ||= [])
 } else if(typeof window === 'object' && window) {
-	list = (window.TLS_ADDITIONAL_ROOT_CA_LIST ||= [])
+	TLS_ADDITIONAL_ROOT_CA_LIST = (window.TLS_ADDITIONAL_ROOT_CA_LIST ||= [])
+} else {
+	TLS_ADDITIONAL_ROOT_CA_LIST = []
 }
 
 TLS_ADDITIONAL_ROOT_CA_LIST.push(

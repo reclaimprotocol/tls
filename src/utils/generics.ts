@@ -52,8 +52,18 @@ export function uint8ArrayToDataView(arr: Uint8Array) {
 	return new DataView(arr.buffer, arr.byteOffset, arr.byteLength)
 }
 
-export function strToUint8Array(str: string) {
-	return new TextEncoder().encode(str)
+export function asciiToUint8Array(str: string) {
+	const bytes: Uint8Array = new Uint8Array(str.length)
+	for(let i = 0; i < str.length; i++) {
+		const charCode = str.charCodeAt(i)
+		if(charCode < 0 || charCode > 255) {
+			throw new Error(`Invalid ASCII character at index ${i}: ${str[i]}`)
+		}
+
+		bytes[i] = charCode
+	}
+
+	return bytes
 }
 
 export function uint8ArrayToStr(arr: Uint8Array) {

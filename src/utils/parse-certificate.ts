@@ -3,7 +3,7 @@ import { crypto } from '../crypto/index.ts'
 import type { CertificatePublicKey, CipherSuite, Key, TLSProcessContext, X509Certificate } from '../types/index.ts'
 import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants.ts'
 import { getHash } from './decryption-utils.ts'
-import { areUint8ArraysEqual, concatenateUint8Arrays, strToUint8Array } from './generics.ts'
+import { areUint8ArraysEqual, asciiToUint8Array, concatenateUint8Arrays } from './generics.ts'
 import { MOZILLA_ROOT_CA_LIST } from './mozilla-root-cas.ts'
 import { expectReadWithLength, packWithLength } from './packets.ts'
 import { loadX509FromDer, loadX509FromPem } from './x509.ts'
@@ -15,7 +15,7 @@ type VerifySignatureOptions = {
 	signatureData: Uint8Array
 }
 
-const CERT_VERIFY_TXT = strToUint8Array('TLS 1.3, server CertificateVerify')
+const CERT_VERIFY_TXT = asciiToUint8Array('TLS 1.3, server CertificateVerify')
 let ROOT_CAS: X509Certificate[] | undefined
 
 export function parseCertificates(

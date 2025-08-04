@@ -7,7 +7,7 @@ import { webcrypto } from 'crypto'
 import type { PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
 import { PKCS1_KEM } from 'micro-rsa-dsa-dh/rsa.js'
 import type { AsymmetricCryptoAlgorithm, Crypto } from '../types/crypto.ts'
-import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics.ts'
+import { asciiToUint8Array, concatenateUint8Arrays } from '../utils/generics.ts'
 import { parseRsaPublicKeyFromAsn1 } from './common.ts'
 
 const subtle = webcrypto.subtle
@@ -332,7 +332,7 @@ export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 	// extract & expand logic referenced from:
 	// https://github.com/futoin/util-js-hkdf/blob/master/hkdf.js
 	async extract(alg, hashLength, ikm, salt) {
-		salt = typeof salt === 'string' ? strToUint8Array(salt) : salt
+		salt = typeof salt === 'string' ? asciiToUint8Array(salt) : salt
 		if(!salt.length) {
 			salt = new Uint8Array(hashLength)
 		}

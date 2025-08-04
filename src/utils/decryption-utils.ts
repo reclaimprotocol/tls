@@ -1,7 +1,7 @@
 import { crypto } from '../crypto/index.ts'
 import type { CipherSuite, HashAlgorithm } from '../types/index.ts'
 import { SUPPORTED_CIPHER_SUITE_MAP } from './constants.ts'
-import { concatenateUint8Arrays, hkdfExpand, isSymmetricCipher, strToUint8Array, uint8ArrayToDataView } from './generics.ts'
+import { asciiToUint8Array, concatenateUint8Arrays, hkdfExpand, isSymmetricCipher, uint8ArrayToDataView } from './generics.ts'
 import { packWithLength } from './packets.ts'
 
 type DeriveTrafficKeysOptions = {
@@ -26,8 +26,8 @@ type DeriveTrafficKeysOptionsTls12 = {
 export type SharedKeyData = Awaited<ReturnType<typeof computeSharedKeys>>
 	| Awaited<ReturnType<typeof computeSharedKeysTls12>>
 
-const TLS1_2_BASE_SEED = strToUint8Array('master secret')
-const TLS1_2_KEY_EXPANSION_SEED = strToUint8Array('key expansion')
+const TLS1_2_BASE_SEED = asciiToUint8Array('master secret')
+const TLS1_2_KEY_EXPANSION_SEED = asciiToUint8Array('key expansion')
 
 export async function computeSharedKeysTls12(opts: DeriveTrafficKeysOptionsTls12) {
 	const {
@@ -252,7 +252,7 @@ export async function hkdfExtractAndExpandLabel(algorithm: HashAlgorithm, secret
 	lengthBufferView.setUint16(0, length)
 	const hkdfLabel = concatenateUint8Arrays([
 		lengthBuffer,
-		packWithLength(strToUint8Array(tmpLabel)).slice(1),
+		packWithLength(asciiToUint8Array(tmpLabel)).slice(1),
 		packWithLength(context).slice(1)
 	])
 

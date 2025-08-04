@@ -2,24 +2,24 @@
 	"name": "@reclaimprotocol/tls",
 	"version": "0.1.0",
 	"description": "WebCrypto Based Cross Platform TLS",
-	"main": "lib/index",
 	"type": "module",
 	"exports": {
 		".": {
-			"default": "./lib/index.js",
-			"types": "./lib/index.d.ts"
+			"types": "./lib/index.d.ts",
+			"default": "./lib/index.js"
 		},
 		"./webcrypto": {
-			"default": "./lib/crypto/webcrypto.js",
-			"types": "./lib/crypto/webcrypto.d.ts"
+			"types": "./lib/crypto/webcrypto.d.ts",
+			"default": "./lib/crypto/webcrypto.js"
 		},
 		"./purejs-crypto": {
-			"default": "./lib/crypto/purejs.js",
-			"types": "./lib/crypto/purejs.d.ts"
+			"types": "./lib/crypto/purejs.d.ts",
+			"default": "./lib/crypto/purejs.js"
 		}
 	},
 	"scripts": {
 		"build": "npm exec tsc -- -p tsconfig.build.json",
+		"build:jsc": "npm run run:tsc src/scripts/build-jsc.ts",
 		"run:tsc": "node --experimental-strip-types",
 		"test:pure-js": "npm run run:tsc -- --import=./src/tests/load-purejs-crypto.ts --test",
 		"test:webcrypto": "npm run run:tsc -- --import=./src/tests/load-webcrypto.ts --test",
@@ -74,6 +74,7 @@
 		"@typescript-eslint/eslint-plugin": "^8.17.0",
 		"chance": "^1.1.12",
 		"csv-parse": "^5.6.0",
+		"esbuild": "^0.25.8",
 		"eslint": "^8.57.1",
 		"pino": "^9.5.0",
 		"typescript": "^5.0.0"

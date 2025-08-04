@@ -14,8 +14,9 @@ import { OriginatorPublicKey } from '@peculiar/asn1-cms'
 import { AsnParser } from '@peculiar/asn1-schema'
 import { mgf1, PKCS1_KEM, PKCS1_SHA256, PKCS1_SHA384, PKCS1_SHA512, PSS } from 'micro-rsa-dsa-dh/rsa.js'
 import type { AsymmetricCryptoAlgorithm, AuthenticatedSymmetricCryptoAlgorithm, Crypto, HashAlgorithm } from '../types/index.ts'
-import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics.ts'
+import { asciiToUint8Array, concatenateUint8Arrays } from '../utils/generics.ts'
 import { bufToUint8Array, parseRsaPublicKeyFromAsn1 } from './common.ts'
+import { randomBytes } from './insecure-rand.ts'
 
 type MakeCipher
 	= (key: Uint8Array, nonce: Uint8Array, AAD?: Uint8Array) => Cipher
@@ -77,15 +78,7 @@ export const pureJsCrypto: Crypto<Uint8Array> = {
 
 		return secret
 	},
-	randomBytes(length) {
-		// not the most secure but will do for now
-		const bytes = new Uint8Array(length)
-		for(let i = 0; i < length; i++) {
-			bytes[i] = Math.floor(Math.random() * 256) % 256
-		}
-
-		return bytes
-	},
+	randomBytes: randomBytes,
 	asymmetricEncrypt(cipherSuite, { publicKey, data }) {
 		if(cipherSuite !== 'RSA-PCKS1_5') {
 			throw new Error(`Unsupported cipher suite ${cipherSuite}`)
@@ -172,7 +165,7 @@ export const pureJsCrypto: Crypto<Uint8Array> = {
 		return hmac(HASH_MAP[alg], key, data)
 	},
 	extract(alg, hashLength, ikm, salt) {
-		salt = typeof salt === 'string' ? strToUint8Array(salt) : salt
+		salt = typeof salt === 'string' ? asciiToUint8Array(salt) : salt
 		if(!salt.length) {
 			salt = new Uint8Array(hashLength).fill(0)
 		}

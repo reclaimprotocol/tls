@@ -116,7 +116,7 @@ export function makeMessageProcessor(logger: Logger) {
 		 * or a single packet
 		 * @param onChunk handle a complete packet
 		 */
-		onData(packet: Uint8Array, onChunk: ProcessPacket) {
+		async onData(packet: Uint8Array, onChunk: ProcessPacket) {
 			buffer = concatenateUint8Arrays([ buffer, packet ])
 			while(buffer.length) {
 				// if we already aren't processing a packet
@@ -165,7 +165,7 @@ export function makeMessageProcessor(logger: Logger) {
 				const body = buffer.slice(0, bytesLeft)
 
 				logger.trace({ type: currentMessageType }, 'got complete packet')
-				onChunk(currentMessageType, {
+				await onChunk(currentMessageType, {
 					header: currentMessageHeader!,
 					content: body
 				})

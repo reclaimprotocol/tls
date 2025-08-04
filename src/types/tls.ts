@@ -105,7 +105,7 @@ export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {
 
 	logger?: Logger
 
-	write(packet: TLSPacket, ctx: TLSPacketContext): Promise<void>
+	write(packet: TLSPacket, ctx: TLSPacketContext): Promise<void> | void
 }
 
 export type TLSPresharedKey = {

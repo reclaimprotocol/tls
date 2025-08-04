@@ -3,7 +3,7 @@ import Chance from 'chance'
 import { readFileSync } from 'fs'
 import { Socket } from 'net'
 import { after, before, beforeEach, describe, it, mock } from 'node:test'
-import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_NAMED_CURVE_MAP } from '../index.ts'
+import { asciiToUint8Array, crypto, makeTLSClient, SUPPORTED_NAMED_CURVE_MAP } from '../index.ts'
 import type { CipherSuite, TLSClientOptions, TLSPresharedKey, TLSSessionTicket } from '../types/index.ts'
 import { createMockTLSServer } from './mock-tls-server.ts'
 import { delay, logger } from './utils.ts'
@@ -39,8 +39,8 @@ const TLS_DATA_MAP = {
 const TLS_VERSIONS = Object.keys(TLS_DATA_MAP) as (keyof typeof TLS_DATA_MAP)[]
 
 const DATA_POINTS = [
-	strToUint8Array('hi'),
-	strToUint8Array('hello world'),
+	asciiToUint8Array('hi'),
+	asciiToUint8Array('hello world'),
 	crypto.randomBytes(chance.integer({ min: 50, max: 150 })),
 ]
 
@@ -179,7 +179,7 @@ for(const tlsversion of TLS_VERSIONS) {
 				}
 			}
 
-			const data = strToUint8Array('hello resumed session')
+			const data = asciiToUint8Array('hello resumed session')
 			tls.write(data)
 
 			const recvData = await new Promise<Uint8Array>(resolve => {
@@ -224,7 +224,7 @@ for(const tlsversion of TLS_VERSIONS) {
 			assert.ok(oldKey)
 			await tls.updateTrafficKeys(true)
 
-			const data = strToUint8Array('hello world')
+			const data = asciiToUint8Array('hello world')
 			await tls.write(data)
 
 			const recvData = await new Promise<Uint8Array>(resolve => {

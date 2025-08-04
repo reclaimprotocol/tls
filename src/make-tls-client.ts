@@ -800,7 +800,7 @@ export function makeTLSClient({
 		 * Could be a complete or partial TLS packet
 		 */
 		handleReceivedBytes(data: Uint8Array) {
-			processor.onData(data, processPacket)
+			return processor.onData(data, processPacket)
 		},
 		/**
 		 * Handle a complete TLS packet received
