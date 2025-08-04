@@ -164,6 +164,13 @@ Use the TLS KeyUpdate method to update the traffic keys. This sends a KeyUpdate 
 await tls.updateTrafficKeys()
 ```
 
+### Testing Connections
+
+If you want to test a connection to a host, you can use the `handshake.ts` script. This script will connect to the specified host and port, perform a TLS handshake, and log the result.
+```bash
+npm run handshake -- --host www.google.com
+```
+
 ## Updating CA certificates
 ```bash
 npm run update:root-ca
