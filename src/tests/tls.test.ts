@@ -1,5 +1,6 @@
 import assert from 'assert'
 import Chance from 'chance'
+import { readFileSync } from 'fs'
 import { Socket } from 'net'
 import { after, before, beforeEach, describe, it, mock } from 'node:test'
 import { crypto, makeTLSClient, strToUint8Array, SUPPORTED_NAMED_CURVE_MAP } from '../index.ts'
@@ -42,6 +43,10 @@ const DATA_POINTS = [
 	strToUint8Array('hello world'),
 	crypto.randomBytes(chance.integer({ min: 50, max: 150 })),
 ]
+
+TLS_ADDITIONAL_ROOT_CA_LIST.push(
+	readFileSync('./cert/public-cert.pem', 'utf-8')
+)
 
 for(const tlsversion of TLS_VERSIONS) {
 	const {
@@ -240,8 +245,7 @@ for(const tlsversion of TLS_VERSIONS) {
 		})
 
 		function connectTLS(
-			opts?: Partial<TLSClientOptions>,
-			psk?: TLSPresharedKey
+			opts?: Partial<TLSClientOptions>, psk?: TLSPresharedKey
 		) {
 			const socket = new Socket()
 			const host = 'localhost'
@@ -249,7 +253,6 @@ for(const tlsversion of TLS_VERSIONS) {
 
 			const tls = makeTLSClient({
 				host,
-				verifyServerCertificate: false,
 				supportedProtocolVersions: [
 					tlsversion
 				],

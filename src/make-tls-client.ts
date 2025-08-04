@@ -493,10 +493,13 @@ export function makeTLSClient({
 	async function processServerFinish(serverFinish: Uint8Array) {
 		logger.debug('received server finish')
 
-		if(!certificatesVerified && verifyServerCertificate) {
-			throw new Error(
-				'Finish received before certificate verification'
-			)
+		if(
+			!certificatesVerified
+			// when using a PSK, the server does not send certificates
+			&& !earlySecret
+			&& verifyServerCertificate
+		) {
+			throw new Error('Finish received before certificate verification')
 		}
 
 		if(connTlsVersion === 'TLS1_2') {
@@ -717,12 +720,7 @@ export function makeTLSClient({
 
 	return {
 		getMetadata() {
-			return {
-				cipherSuite,
-				keyType,
-				version: connTlsVersion,
-				selectedAlpn,
-			}
+			return { cipherSuite, keyType, version: connTlsVersion, selectedAlpn }
 		},
 		hasEnded() {
 			return ended
