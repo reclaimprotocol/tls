@@ -1,10 +1,8 @@
 import * as peculiar from '@peculiar/x509'
 import { SubjectAlternativeNameExtension } from '@peculiar/x509'
+import { crypto } from '../crypto/index.ts'
 // not using types/index to avoid circular dependency
-import type { X509Certificate } from '../types/index.ts'
-import { webcrypto } from './webcrypto.ts'
-
-peculiar.cryptoProvider.set(webcrypto)
+import type { SignatureAlgorithm, X509Certificate } from '../types/index.ts'
 
 export function loadX509FromPem(
 	pem: string | Uint8Array
@@ -49,12 +47,47 @@ export function loadX509FromPem(
 				algorithm: cert.publicKey.algorithm.name,
 			}
 		},
-		verifyIssued(otherCert) {
-			return otherCert.internal.verify({ publicKey: cert.publicKey })
+		async verifyIssued(otherCert) {
+			const sigAlg = getSigAlgorithm(otherCert.internal)
+			const impPublicKey = await crypto
+				.importKey(sigAlg, new Uint8Array(cert.publicKey.rawData), 'public')
+			const signature = new Uint8Array(otherCert.internal.signature)
+			const verified = await crypto.verify(sigAlg, {
+				publicKey: impPublicKey,
+				signature,
+				data: new Uint8Array(otherCert.internal['tbs'])
+			})
+			return verified
 		},
 		serialiseToPem() {
 			return cert.toString('pem')
 		},
+	}
+}
+
+function getSigAlgorithm(
+	{ signatureAlgorithm }: peculiar.X509Certificate,
+): SignatureAlgorithm {
+	if(!('name' in signatureAlgorithm)) {
+		throw new Error('Missing signature algorithm name')
+	}
+
+	const { name, hash } = signatureAlgorithm
+	switch (name) {
+	case 'RSASSA-PKCS1-v1_5':
+		switch (hash.name) {
+		case 'SHA-256':
+			return 'RSA-PKCS1-SHA256'
+		case 'SHA-384':
+			return 'RSA-PKCS1-SHA384'
+		case 'SHA-512':
+			return 'RSA-PKCS1-SHA512'
+		default:
+			throw new Error(`Unsupported hash algorithm: ${hash.name}`)
+		}
+
+	default:
+		throw new Error(`Unsupported signature algorithm: ${name}`)
 	}
 }
 

@@ -3,11 +3,11 @@ import { chacha20poly1305 } from '@noble/ciphers/chacha'
 import { ECDSASigValue } from '@peculiar/asn1-ecc'
 import { AsnParser } from '@peculiar/asn1-schema'
 import type { webcrypto as WebCrypto } from 'crypto'
+import { webcrypto } from 'crypto'
 import type { PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
 import { PKCS1_KEM } from 'micro-rsa-dsa-dh/rsa.js'
 import type { AsymmetricCryptoAlgorithm, Crypto } from '../types/crypto.ts'
 import { concatenateUint8Arrays, strToUint8Array } from '../utils/generics.ts'
-import { webcrypto } from '../utils/webcrypto.ts'
 import { parseRsaPublicKeyFromAsn1 } from './common.ts'
 
 const subtle = webcrypto.subtle

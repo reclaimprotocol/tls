@@ -32,8 +32,8 @@ jobs:
     - name: Lint
       run: npm run lint
     
-    - name: Test (PureJS Crypto)
-      run: npm run test:purejs-crypto
+    - name: Test (PureJS)
+      run: npm run test:purejs
     
     - name: Test (WebCrypto)
       run: npm run test:webcrypto
