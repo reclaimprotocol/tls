@@ -1,6 +1,7 @@
+import { cbc as aesCbc } from '@noble/ciphers/aes'
+import { chacha20poly1305 } from '@noble/ciphers/chacha'
 import { ECDSASigValue } from '@peculiar/asn1-ecc'
 import { AsnParser } from '@peculiar/asn1-schema'
-import { ChaCha20Poly1305 } from '@stablelib/chacha20poly1305'
 import type { webcrypto as WebCrypto } from 'crypto'
 import type { PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
 import { PKCS1_KEM } from 'micro-rsa-dsa-dh/rsa.js'
@@ -221,14 +222,18 @@ export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 		return toUint8Array(await subtle.encrypt({ name, iv }, key, data))
 			.slice(0, data.length)
 	},
-	async decrypt(cipherSuite, opts) {
-		if(cipherSuite === 'AES-128-CBC') {
-			const { decryptAesCbc } = await import('./aes-cbc.ts')
-			const exported = toUint8Array(await subtle.exportKey('raw', opts.key))
-			return decryptAesCbc(exported, opts.iv, opts.data)
+	async decrypt(cipherSuite, { key, iv, data }) {
+		if(cipherSuite !== 'AES-128-CBC') {
+			throw new Error(`Unsupported cipher suite: ${cipherSuite}`)
 		}
 
-		throw new Error(`Unsupported cipher suite ${cipherSuite}`)
+		const rawKey = key instanceof Uint8Array
+			? key
+			: await this.exportKey(key)
+
+		const cipher = aesCbc(rawKey, iv, { disablePadding: true })
+		const decrypted = cipher.decrypt(data)
+		return decrypted
 	},
 	async authenticatedEncrypt(cipherSuite, { iv, aead, key, data }) {
 		let ciphertext: Uint8Array
@@ -237,8 +242,8 @@ export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 				? key
 				: await this.exportKey(key)
 
-			const cipher = new ChaCha20Poly1305(rawKey)
-			ciphertext = cipher.seal(iv, data, aead)
+			const cipher = chacha20poly1305(rawKey, iv, aead)
+			ciphertext = cipher.encrypt(data)
 		} else {
 			ciphertext = toUint8Array(
 				await subtle.encrypt(
@@ -266,11 +271,8 @@ export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 				? key
 				: await this.exportKey(key)
 
-			const cipher = new ChaCha20Poly1305(rawKey)
-			plaintext = cipher.open(iv, ciphertext, aead)!
-			if(!plaintext) {
-				throw new Error('Failed to authenticate ChaCha20 ciphertext')
-			}
+			const cipher = chacha20poly1305(rawKey, iv, aead)
+			plaintext = cipher.decrypt(ciphertext)
 		} else {
 			plaintext = toUint8Array(
 				await subtle.decrypt(
