@@ -7,9 +7,9 @@ import { expectBuffsEq } from './utils.ts'
 
 describe('TLS Message Processor', () => {
 
-	it('should process a complete message', () => {
+	it('should process a complete message', async() => {
 		const processor = makeTestMsgProcessor()
-		const pkts = processor.onData(
+		const pkts = await processor.onData(
 			Buffer.from('15030300050101010101', 'hex')
 		)
 		assert.equal(pkts.length, 1)
@@ -17,11 +17,11 @@ describe('TLS Message Processor', () => {
 		expectBuffsEq(pkts[0].content, Buffer.from('0101010101', 'hex'))
 	})
 
-	it('should process a message byte-by-byte', () => {
+	it('should process a message byte-by-byte', async() => {
 		const processor = makeTestMsgProcessor()
 		const buffer = Buffer.from('15030300050101010101', 'hex')
 		for(let i = 0;i < buffer.length;i++) {
-			const pkts = processor.onData(buffer.subarray(i, i + 1))
+			const pkts = await processor.onData(buffer.subarray(i, i + 1))
 			if(i < buffer.length - 1) {
 				assert.equal(pkts.length, 0)
 			} else {
@@ -31,21 +31,19 @@ describe('TLS Message Processor', () => {
 		}
 	})
 
-	it('should process multiple messages', () => {
+	it('should process multiple messages', async() => {
 		const processor = makeTestMsgProcessor()
 		const buffers = [
 			Buffer.from('15030300050101010101', 'hex'),
 			Buffer.from('1503030006010101010101', 'hex')
 		]
-		const pkts = processor.onData(
-			Buffer.concat(buffers)
-		)
+		const pkts = await processor.onData(Buffer.concat(buffers))
 		assert.equal(pkts.length, 2)
 		expectBuffsEq(pkts[0].content, Buffer.from('0101010101', 'hex'))
 		expectBuffsEq(pkts[1].content, Buffer.from('010101010101', 'hex'))
 	})
 
-	it('should process a message and a half', () => {
+	it('should process a message and a half', async() => {
 		const processor = makeTestMsgProcessor()
 		const msgAndHalfBuffer = Buffer.concat(
 			[
@@ -54,9 +52,9 @@ describe('TLS Message Processor', () => {
 			]
 		)
 		const finalBuffer = Buffer.from('010101010101', 'hex')
-		const pkts = processor.onData(msgAndHalfBuffer)
+		const pkts = await processor.onData(msgAndHalfBuffer)
 		assert.equal(pkts.length, 1)
-		const pkts2 = processor.onData(finalBuffer)
+		const pkts2 = await processor.onData(finalBuffer)
 		assert.equal(pkts2.length, 1)
 	})
 
@@ -66,9 +64,9 @@ describe('TLS Message Processor', () => {
 
 		return {
 			...processor,
-			onData(packet: Buffer) {
+			async onData(packet: Buffer) {
 				const packets: TLSPacket[] = []
-				processor.onData(
+				await processor.onData(
 					packet,
 					(_, pkt) => {
 						packets.push(pkt)

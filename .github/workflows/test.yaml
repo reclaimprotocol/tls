@@ -33,7 +33,7 @@ jobs:
       run: npm run lint
     
     - name: Test (PureJS)
-      run: npm run test:purejs
+      run: npm run test:pure-js
     
     - name: Test (WebCrypto)
       run: npm run test:webcrypto
