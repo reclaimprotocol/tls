@@ -1,7 +1,7 @@
 
 import { parse } from 'csv-parse/sync'
 import * as fs from 'node:fs'
-import { loadX509FromPem } from '../utils'
+import { loadX509FromPem } from '../utils/index.ts'
 
 async function main() {
 	const resp = await fetch('https://ccadb.my.salesforce-sites.com/mozilla/IncludedCACertificateReportPEMCSV')

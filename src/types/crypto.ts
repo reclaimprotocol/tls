@@ -1,5 +1,5 @@
 
-export type Key = CryptoKey
+export type Key = unknown
 
 export type AuthenticatedSymmetricCryptoAlgorithm = 'AES-256-GCM'
 	| 'AES-128-GCM'
@@ -12,7 +12,6 @@ export type AsymmetricEncDecAlgorithm = 'RSA-PCKS1_5'
 export type SignatureAlgorithm = 'RSA-PSS-SHA256'
 	| 'ECDSA-SECP384R1-SHA384'
 	| 'ECDSA-SECP256R1-SHA256'
-	| 'ED25519'
 	| 'RSA-PKCS1-SHA512'
 	| 'RSA-PKCS1-SHA384'
 	| 'RSA-PKCS1-SHA256'
@@ -21,56 +20,53 @@ export type HashAlgorithm = 'SHA-256' | 'SHA-384' | 'SHA-1'
 
 type Awaitable<T> = T | Promise<T>
 
-type CryptOptions = {
-	key: Key
+type CryptOptions<K = Key> = {
+	key: K
 	iv: Uint8Array
 	data: Uint8Array
 }
 
-type AuthenticatedCryptOptions = {
-	key: Key
+type AuthenticatedCryptOptions<K = Key> = {
+	key: K
 	iv: Uint8Array
 	data: Uint8Array
 	aead: Uint8Array
-	authTag?: Uint8Array
 }
 
-type VerifyOptions = {
+type VerifyOptions<K = Key> = {
 	data: Uint8Array
 	signature: Uint8Array
-	publicKey: Key
+	publicKey: K
 }
 
-export type KeyPair = {
-	pubKey: Key
-	privKey: Key
+export type KeyPair<K = Key> = {
+	pubKey: K
+	privKey: K
 }
 
-export type Crypto = {
+export type Crypto<K> = {
 	importKey(
-		alg: AuthenticatedSymmetricCryptoAlgorithm
-			| SymmetricCryptoAlgorithm,
-		raw: Uint8Array
-	): Awaitable<Key>
-	importKey(alg: HashAlgorithm, raw: Uint8Array): Awaitable<Key>
-	importKey(alg: SignatureAlgorithm, raw: Uint8Array, type: 'public'): Awaitable<Key>
-	importKey(
-		alg: AsymmetricCryptoAlgorithm | AsymmetricEncDecAlgorithm,
+		alg: AuthenticatedSymmetricCryptoAlgorithm | SymmetricCryptoAlgorithm,
 		raw: Uint8Array,
-		type: 'private' | 'public'
-	): Awaitable<Key>
-	exportKey(key: Key): Awaitable<Uint8Array>
+		empty?: unknown
+	): Awaitable<K>
+	importKey(alg: HashAlgorithm, raw: Uint8Array, empty?: unknown): Awaitable<K>
+	importKey(
+		alg: SignatureAlgorithm | AsymmetricEncDecAlgorithm,
+		raw: Uint8Array,
+		type: 'public'
+	): Awaitable<K>
+	importKey(alg: AsymmetricCryptoAlgorithm, raw: Uint8Array, type: 'private' | 'public'): Awaitable<K>
+	exportKey(key: K): Awaitable<Uint8Array>
 
-	generateKeyPair(
-		alg: AsymmetricCryptoAlgorithm
-	): Awaitable<KeyPair>
-	calculateSharedSecret(alg: AsymmetricCryptoAlgorithm, privateKey: Key, publicKey: Key): Awaitable<Uint8Array>
+	generateKeyPair(alg: AsymmetricCryptoAlgorithm): Awaitable<KeyPair<K>>
+	calculateSharedSecret(alg: AsymmetricCryptoAlgorithm, privateKey: K, publicKey: K): Awaitable<Uint8Array>
 
 	randomBytes(length: number): Uint8Array
 	asymmetricEncrypt(
 		cipherSuite: AsymmetricEncDecAlgorithm,
 		opts: {
-			publicKey: Key
+			publicKey: K
 			data: Uint8Array
 		}
 	): Awaitable<Uint8Array>
@@ -79,28 +75,27 @@ export type Crypto = {
 	 * Expects padding has already been applied to the data.
 	 */
 	encrypt(
-		cipherSuite: SymmetricCryptoAlgorithm | 'RSA-OAEP',
-		opts: CryptOptions
+		cipherSuite: SymmetricCryptoAlgorithm,
+		opts: CryptOptions<K>
 	): Awaitable<Uint8Array>
 	decrypt(
 		cipherSuite: SymmetricCryptoAlgorithm,
-		opts: CryptOptions
+		opts: CryptOptions<K>
 	): Awaitable<Uint8Array>
 	authenticatedEncrypt(
 		cipherSuite: AuthenticatedSymmetricCryptoAlgorithm,
-		opts: AuthenticatedCryptOptions
+		opts: AuthenticatedCryptOptions<K>
 	): Awaitable<{ ciphertext: Uint8Array, authTag: Uint8Array }>
 	authenticatedDecrypt(
 		cipherSuite: AuthenticatedSymmetricCryptoAlgorithm,
-		opts: AuthenticatedCryptOptions
+		opts: AuthenticatedCryptOptions<K> & { authTag: Uint8Array }
 	): Awaitable<{ plaintext: Uint8Array }>
 	verify(
 		alg: SignatureAlgorithm,
-		opts: VerifyOptions
+		opts: VerifyOptions<K>
 	): Awaitable<boolean>
 
 	hash(alg: HashAlgorithm, data: Uint8Array): Awaitable<Uint8Array>
-	hmac(alg: HashAlgorithm, key: Key, data: Uint8Array): Awaitable<Uint8Array>
+	hmac(alg: HashAlgorithm, key: K, data: Uint8Array): Awaitable<Uint8Array>
 	extract(alg: HashAlgorithm, hashLength: number, ikm: Uint8Array, salt: Uint8Array | string): Awaitable<Uint8Array>
-	expand(alg: HashAlgorithm, hashLength: number, key: Key, expLength: number, info: Uint8Array): Awaitable<Uint8Array>
 }

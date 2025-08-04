@@ -1,31 +1,33 @@
-import { packClientHello } from './utils/client-hello'
-import { CONTENT_TYPE_MAP, MAX_ENC_PACKET_SIZE, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants'
-import { computeSharedKeys, computeSharedKeysTls12, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide, SharedKeyData } from './utils/decryption-utils'
-import { generateFinishTls12, packClientFinishTls12, packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages'
-import { areUint8ArraysEqual, chunkUint8Array, concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics'
-import { createRsaPreMasterSecret, packClientCurveKeyShare, packClientRsaKeyShare, processServerKeyShare } from './utils/key-share'
-import { packKeyUpdateRecord } from './utils/key-update'
-import { logger as LOGGER } from './utils/logger'
-import { makeQueue } from './utils/make-queue'
-import { makeMessageProcessor, PacketOptions, packPacketHeader, packWithLength, readWithLength } from './utils/packets'
-import { parseTlsAlert } from './utils/parse-alert'
-import { getSignatureDataTls12, getSignatureDataTls13, parseCertificates, parseServerCertificateVerify, verifyCertificateChain, verifyCertificateSignature } from './utils/parse-certificate'
-import { parseServerExtensions } from './utils/parse-extensions'
-import { parseServerHello } from './utils/parse-server-hello'
-import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket'
-import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record'
-import { crypto } from './crypto'
-import { CipherSuite, Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSKeyType, TLSPacket, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types'
+import { crypto } from './crypto/index.ts'
+import type { CipherSuite, Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSKeyType, TLSPacket, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types/index.ts'
+import { packClientHello } from './utils/client-hello.ts'
+import { CONTENT_TYPE_MAP, MAX_ENC_PACKET_SIZE, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants.ts'
+import type { SharedKeyData } from './utils/decryption-utils.ts'
+import { computeSharedKeys, computeSharedKeysTls12, computeUpdatedTrafficMasterSecret, deriveTrafficKeysForSide } from './utils/decryption-utils.ts'
+import { generateFinishTls12, packClientFinishTls12, packFinishMessagePacket, verifyFinishMessage } from './utils/finish-messages.ts'
+import { areUint8ArraysEqual, chunkUint8Array, concatenateUint8Arrays, toHexStringWithWhitespace } from './utils/generics.ts'
+import { createRsaPreMasterSecret, packClientCurveKeyShare, packClientRsaKeyShare, processServerKeyShare } from './utils/key-share.ts'
+import { packKeyUpdateRecord } from './utils/key-update.ts'
+import { logger as LOGGER } from './utils/logger.ts'
+import { makeQueue } from './utils/make-queue.ts'
+import type { PacketOptions } from './utils/packets.ts'
+import { makeMessageProcessor, packPacketHeader, packWithLength, readWithLength } from './utils/packets.ts'
+import { parseTlsAlert } from './utils/parse-alert.ts'
+import { getSignatureDataTls12, getSignatureDataTls13, parseCertificates, parseServerCertificateVerify, verifyCertificateChain, verifyCertificateSignature } from './utils/parse-certificate.ts'
+import { parseServerExtensions } from './utils/parse-extensions.ts'
+import { parseServerHello } from './utils/parse-server-hello.ts'
+import { getPskFromTicket, parseSessionTicket } from './utils/session-ticket.ts'
+import { decryptWrappedRecord, encryptWrappedRecord } from './utils/wrapped-record.ts'
 
 const RECORD_LENGTH_BYTES = 3
 
 export function makeTLSClient({
 	host,
-	verifyServerCertificate,
+	verifyServerCertificate = true,
 	rootCAs,
 	logger: _logger,
 	cipherSuites,
-	namedCurves,
+	namedCurves = SUPPORTED_NAMED_CURVES,
 	supportedProtocolVersions,
 	signatureAlgorithms,
 	applicationLayerProtocols,
@@ -37,9 +39,6 @@ export function makeTLSClient({
 	onHandshake,
 	onRecvCertificates
 }: TLSClientOptions) {
-	verifyServerCertificate = verifyServerCertificate !== false
-	namedCurves = namedCurves || SUPPORTED_NAMED_CURVES
-
 	const logger = _logger || LOGGER
 	const processor = makeMessageProcessor(logger)
 	const { enqueue: enqueueServerPacket } = makeQueue()
@@ -47,7 +46,7 @@ export function makeTLSClient({
 	const keyPairs: { [C in TLSKeyType]?: KeyPair } = {}
 	let handshakeDone = false
 	let ended = false
-	let sessionId = new Uint8Array()
+	let sessionId: Uint8Array = new Uint8Array()
 	let handshakeMsgs: Uint8Array[] = []
 	let cipherSuite: CipherSuite | undefined = undefined
 	let earlySecret: Uint8Array | undefined = undefined
@@ -62,7 +61,7 @@ export function makeTLSClient({
 	let selectedAlpn: string | undefined
 
 	let certificates: X509Certificate[] | undefined
-	let handshakePacketStream = new Uint8Array()
+	let handshakePacketStream: Uint8Array = new Uint8Array()
 	let clientCertificateRequested = false
 	let certificatesVerified = false
 
@@ -494,10 +493,13 @@ export function makeTLSClient({
 	async function processServerFinish(serverFinish: Uint8Array) {
 		logger.debug('received server finish')
 
-		if(!certificatesVerified && verifyServerCertificate) {
-			throw new Error(
-				'Finish received before certificate verification'
-			)
+		if(
+			!certificatesVerified
+			// when using a PSK, the server does not send certificates
+			&& !earlySecret
+			&& verifyServerCertificate
+		) {
+			throw new Error('Finish received before certificate verification')
 		}
 
 		if(connTlsVersion === 'TLS1_2') {
@@ -711,24 +713,14 @@ export function makeTLSClient({
 
 	async function getKeyPair(keyType: TLSKeyType) {
 		const algorithm = SUPPORTED_NAMED_CURVE_MAP[keyType].algorithm
-		if(!keyPairs[keyType]) {
-			keyPairs[keyType] = await crypto.generateKeyPair(algorithm)
-		}
+		keyPairs[keyType] ??= await crypto.generateKeyPair(algorithm)
 
-		return {
-			algorithm,
-			keyPair: keyPairs[keyType]!
-		}
+		return { algorithm, keyPair: keyPairs[keyType] }
 	}
 
 	return {
 		getMetadata() {
-			return {
-				cipherSuite,
-				keyType,
-				version: connTlsVersion,
-				selectedAlpn,
-			}
+			return { cipherSuite, keyType, version: connTlsVersion, selectedAlpn }
 		},
 		hasEnded() {
 			return ended
@@ -775,7 +767,7 @@ export function makeTLSClient({
 			const clientHello = await packClientHello({
 				host,
 				keysToShare: await Promise.all(
-					namedCurves!
+					namedCurves
 						.map(async(keyType) => {
 							const { keyPair } = await getKeyPair(keyType)
 							return {
@@ -808,7 +800,7 @@ export function makeTLSClient({
 		 * Could be a complete or partial TLS packet
 		 */
 		handleReceivedBytes(data: Uint8Array) {
-			processor.onData(data, processPacket)
+			return processor.onData(data, processPacket)
 		},
 		/**
 		 * Handle a complete TLS packet received

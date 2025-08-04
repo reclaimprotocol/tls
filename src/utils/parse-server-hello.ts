@@ -1,8 +1,8 @@
-import { crypto } from '../crypto'
-import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_CIPHER_SUITES, SUPPORTED_NAMED_CURVE_MAP } from './constants'
-import { areUint8ArraysEqual } from './generics'
-import { expectReadWithLength } from './packets'
-import { parseServerExtensions } from './parse-extensions'
+import { crypto } from '../crypto/index.ts'
+import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_CIPHER_SUITES, SUPPORTED_NAMED_CURVE_MAP } from './constants.ts'
+import { areUint8ArraysEqual } from './generics.ts'
+import { expectReadWithLength } from './packets.ts'
+import { parseServerExtensions } from './parse-extensions.ts'
 
 export async function parseServerHello(data: Uint8Array) {
 	// header TLS version (expected to be 0x0303)

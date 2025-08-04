@@ -1,12 +1,12 @@
 import * as peculiar from '@peculiar/x509'
 import { SubjectAlternativeNameExtension } from '@peculiar/x509'
+import { crypto } from '../crypto/index.ts'
 // not using types/index to avoid circular dependency
-import type { X509Certificate } from '../types'
-import { webcrypto } from './webcrypto'
+import type { SignatureAlgorithm, X509Certificate } from '../types/index.ts'
 
-peculiar.cryptoProvider.set(webcrypto)
-
-export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<peculiar.X509Certificate> {
+export function loadX509FromPem(
+	pem: string | Uint8Array
+): X509Certificate<peculiar.X509Certificate> {
 	let cert: peculiar.X509Certificate
 	try {
 		cert = new peculiar.X509Certificate(pem)
@@ -24,10 +24,13 @@ export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<pecul
 			return cert.subjectName.getField(name)
 		},
 		getAlternativeDNSNames(): string[] {
-			//search for names in SubjectAlternativeNameExtension
-			const ext = cert.extensions.find(e => e.type === '2.5.29.17') //subjectAltName
+			// search for names in SubjectAlternativeNameExtension
+			const ext = cert.extensions
+				.find(e => e.type === '2.5.29.17') //subjectAltName
 			if(ext instanceof SubjectAlternativeNameExtension) {
-				return ext.names.items.filter(n => n.type === 'dns').map(n => n.value)
+				return ext.names.items
+					.filter(n => n.type === 'dns')
+					.map(n => n.value)
 			}
 
 			return []
@@ -38,19 +41,23 @@ export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<pecul
 
 			return i === s
 		},
-		getPublicKeyAlgorithm() {
-			return cert.publicKey.algorithm
-		},
 		getPublicKey() {
 			return {
 				buffer: new Uint8Array(cert.publicKey.rawData),
 				algorithm: cert.publicKey.algorithm.name,
 			}
 		},
-		verifyIssued(otherCert) {
-			return otherCert.internal.verify({
-				publicKey: cert.publicKey
+		async verifyIssued(otherCert) {
+			const sigAlg = getSigAlgorithm(otherCert.internal)
+			const impPublicKey = await crypto
+				.importKey(sigAlg, new Uint8Array(cert.publicKey.rawData), 'public')
+			const signature = new Uint8Array(otherCert.internal.signature)
+			const verified = await crypto.verify(sigAlg, {
+				publicKey: impPublicKey,
+				signature,
+				data: new Uint8Array(otherCert.internal['tbs'])
 			})
+			return verified
 		},
 		serialiseToPem() {
 			return cert.toString('pem')
@@ -58,11 +65,33 @@ export function loadX509FromPem(pem: string | Uint8Array): X509Certificate<pecul
 	}
 }
 
-export function loadX509FromDer(der: Uint8Array) {
-	// const PEM_PREFIX = '-----BEGIN CERTIFICATE-----\n'
-	// const PEM_POSTFIX = '-----END CERTIFICATE-----'
+function getSigAlgorithm(
+	{ signatureAlgorithm }: peculiar.X509Certificate,
+): SignatureAlgorithm {
+	if(!('name' in signatureAlgorithm)) {
+		throw new Error('Missing signature algorithm name')
+	}
 
-	// const splitText = der.toString('base64').match(/.{0,64}/g)!.join('\n')
-	// const pem = `${PEM_PREFIX}${splitText}${PEM_POSTFIX}`
+	const { name, hash } = signatureAlgorithm
+	switch (name) {
+	case 'RSASSA-PKCS1-v1_5':
+		switch (hash.name) {
+		case 'SHA-256':
+			return 'RSA-PKCS1-SHA256'
+		case 'SHA-384':
+			return 'RSA-PKCS1-SHA384'
+		case 'SHA-512':
+			return 'RSA-PKCS1-SHA512'
+		default:
+			throw new Error(`Unsupported hash algorithm: ${hash.name}`)
+		}
+
+	default:
+		throw new Error(`Unsupported signature algorithm: ${name}`)
+	}
+}
+
+export function loadX509FromDer(der: Uint8Array) {
+	// peculiar handles both
 	return loadX509FromPem(der)
 }

@@ -1,9 +1,17 @@
-import { Logger } from '../types'
+import type { Logger } from '../types/index.ts'
 
 export const logger: Logger = {
-	info: console.info.bind(console),
-	debug: console.debug.bind(console),
+	info(...args) {
+		return console.info(...args)
+	},
+	debug(...args) {
+		return console.debug(...args)
+	},
 	trace: () => {},
-	warn: console.warn.bind(console),
-	error: console.error.bind(console),
+	warn(...args) {
+		return console.warn(...args)
+	},
+	error(...args) {
+		return console.error(...args)
+	}
 }

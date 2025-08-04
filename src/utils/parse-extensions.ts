@@ -1,7 +1,7 @@
-import { SupportedExtensionClientData, SupportedExtensionServerData } from '../types'
-import { SUPPORTED_EXTENSION_MAP, SUPPORTED_EXTENSIONS, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES } from './constants'
-import { areUint8ArraysEqual, getTlsVersionFromBytes, uint8ArrayToStr } from './generics'
-import { expectReadWithLength } from './packets'
+import type { SupportedExtensionClientData, SupportedExtensionServerData } from '../types/index.ts'
+import { SUPPORTED_EXTENSION_MAP, SUPPORTED_EXTENSIONS, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES } from './constants.ts'
+import { areUint8ArraysEqual, getTlsVersionFromBytes, uint8ArrayToStr } from './generics.ts'
+import { expectReadWithLength } from './packets.ts'
 
 /**
  * Parse a length-encoded list of extensions

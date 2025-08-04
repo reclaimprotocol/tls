@@ -1,7 +1,7 @@
-import { SUPPORTED_RECORD_TYPE_MAP } from './constants'
-import { getTlsVersionFromBytes } from './generics'
-import { expectReadWithLength } from './packets'
-import { parseClientExtensions } from './parse-extensions'
+import { SUPPORTED_RECORD_TYPE_MAP } from './constants.ts'
+import { getTlsVersionFromBytes } from './generics.ts'
+import { expectReadWithLength } from './packets.ts'
+import { parseClientExtensions } from './parse-extensions.ts'
 
 /**
  * Parse a full client hello message

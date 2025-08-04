@@ -18,7 +18,7 @@ jobs:
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
-        node-version: 18
+        node-version: 24
         cache: 'npm'
 
     - uses: actions/cache@v4
@@ -32,5 +32,8 @@ jobs:
     - name: Lint
       run: npm run lint
     
-    - name: Test
-      run: npm run test
+    - name: Test (PureJS)
+      run: npm run test:pure-js
+    
+    - name: Test (WebCrypto)
+      run: npm run test:webcrypto

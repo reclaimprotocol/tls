@@ -1,9 +1,9 @@
-import { crypto } from '../crypto'
-import { CipherSuite, TLSSessionTicket } from '../types'
-import { getHash, hkdfExtractAndExpandLabel } from '../utils/decryption-utils'
-import { SUPPORTED_CIPHER_SUITE_MAP } from './constants'
-import { uint8ArrayToDataView } from './generics'
-import { expectReadWithLength } from './packets'
+import { crypto } from '../crypto/index.ts'
+import type { CipherSuite, TLSSessionTicket } from '../types/index.ts'
+import { getHash, hkdfExtractAndExpandLabel } from '../utils/decryption-utils.ts'
+import { SUPPORTED_CIPHER_SUITE_MAP } from './constants.ts'
+import { uint8ArrayToDataView } from './generics.ts'
+import { expectReadWithLength } from './packets.ts'
 
 type GetResumableSessionTicketOptions = {
 	masterKey: Uint8Array

@@ -1,3 +1,4 @@
 # Ignore artifacts:
 lib
 jest.config.js
+out

@@ -1,15 +1,12 @@
-import P from 'pino'
+import assert from 'node:assert'
+import type { Mock } from 'node:test'
+import { setTimeout } from 'node:timers/promises'
+import { pino } from 'pino'
 
-export function delay(ms: number) {
-	return new Promise((resolve) => setTimeout(resolve, ms))
-}
+export const delay = setTimeout
 
 export function expectBuffsEq(a: Uint8Array, b: Uint8Array) {
-	expect(
-		Array.from(a)
-	).toEqual(
-		Array.from(b)
-	)
+	assert.deepEqual(Array.from(a), Array.from(b))
 }
 
 /**
@@ -20,5 +17,19 @@ export function bufferFromHexStringWithWhitespace(txt: string) {
 	return Buffer.from(txt.replace(/\s/g, ''), 'hex')
 }
 
-export const logger = P({})
+export async function waitForMockCall<T extends Function>(
+	{ mock }: Mock<T>,
+	timeoutMs = 5000
+) {
+	const start = Date.now()
+	while(!mock.calls.length) {
+		if(Date.now() - start > timeoutMs) {
+			throw new Error('Timed out waiting for mock call')
+		}
+
+		await delay(100)
+	}
+}
+
+export const logger = pino({})
 logger.level = process.env.LOG_LEVEL || 'info'

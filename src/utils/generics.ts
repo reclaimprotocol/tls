@@ -1,5 +1,5 @@
-import { AuthenticatedSymmetricCryptoAlgorithm, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types'
-import { TLS_PROTOCOL_VERSION_MAP } from './constants'
+import type { AuthenticatedSymmetricCryptoAlgorithm, Crypto, HashAlgorithm, Key, SymmetricCryptoAlgorithm, TLSProtocolVersion } from '../types/index.ts'
+import { TLS_PROTOCOL_VERSION_MAP } from './constants.ts'
 
 /**
  * Converts a buffer to a hex string with whitespace between each byte
@@ -20,7 +20,9 @@ export function xor(a: Uint8Array, b: Uint8Array) {
 	return result
 }
 
-export function concatenateUint8Arrays(arrays: Uint8Array[]) {
+export function concatenateUint8Arrays(
+	arrays: Uint8Array[]
+): Uint8Array {
 	const totalLength = arrays.reduce((acc, curr) => acc + curr.length, 0)
 	const result = new Uint8Array(totalLength)
 	let offset = 0
@@ -50,8 +52,18 @@ export function uint8ArrayToDataView(arr: Uint8Array) {
 	return new DataView(arr.buffer, arr.byteOffset, arr.byteLength)
 }
 
-export function strToUint8Array(str: string) {
-	return new TextEncoder().encode(str)
+export function asciiToUint8Array(str: string) {
+	const bytes: Uint8Array = new Uint8Array(str.length)
+	for(let i = 0; i < str.length; i++) {
+		const charCode = str.charCodeAt(i)
+		if(charCode < 0 || charCode > 255) {
+			throw new Error(`Invalid ASCII character at index ${i}: ${str[i]}`)
+		}
+
+		bytes[i] = charCode
+	}
+
+	return bytes
 }
 
 export function uint8ArrayToStr(arr: Uint8Array) {
@@ -125,4 +137,39 @@ export function getTlsVersionFromBytes(bytes: Uint8Array) {
 	}
 
 	return supportedV[0] as TLSProtocolVersion
+}
+
+export const hkdfExpand = async(
+	alg: HashAlgorithm,
+	hashLength: number,
+	key: Key,
+	expLength: number,
+	info: Uint8Array,
+	crypto: Crypto<unknown>
+) => {
+	info ||= new Uint8Array(0)
+	const infoLength = info.length
+	const steps = Math.ceil(expLength / hashLength)
+	if(steps > 0xFF) {
+		throw new Error(`OKM length ${expLength} is too long for ${alg} hash`)
+	}
+
+	// use single buffer with unnecessary create/copy/move operations
+	const t = new Uint8Array(hashLength * steps + infoLength + 1)
+	for(let c = 1, start = 0, end = 0; c <= steps; ++c) {
+		// add info
+		t.set(info, end)
+		// add counter
+		t.set([c], end + infoLength)
+		// use view: T(C) = T(C-1) | info | C
+		const hmac = await crypto
+			.hmac(alg, key, t.slice(start, end + infoLength + 1))
+		// put back to the same buffer
+		t.set(hmac.slice(0, t.length - end), end)
+
+		start = end // used for T(C-1) start
+		end += hashLength // used for T(C-1) end & overall end
+	}
+
+	return t.slice(0, expLength)
 }

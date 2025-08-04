@@ -1,9 +1,9 @@
-import { crypto } from '../crypto'
-import { Key, TLSHelloBaseOptions, TLSPresharedKey, TLSProtocolVersion } from '../types'
-import { getHash } from '../utils/decryption-utils'
-import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from './constants'
-import { concatenateUint8Arrays, strToUint8Array, uint8ArrayToDataView } from './generics'
-import { packWith3ByteLength, packWithLength } from './packets'
+import { crypto } from '../crypto/index.ts'
+import type { Key, TLSHelloBaseOptions, TLSPresharedKey, TLSProtocolVersion } from '../types/index.ts'
+import { getHash } from '../utils/decryption-utils.ts'
+import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from './constants.ts'
+import { asciiToUint8Array, concatenateUint8Arrays, uint8ArrayToDataView } from './generics.ts'
+import { packWith3ByteLength, packWithLength } from './packets.ts'
 
 type SupportedNamedCurve = keyof typeof SUPPORTED_NAMED_CURVE_MAP
 
@@ -75,7 +75,7 @@ export async function packClientHello({
 	if(applicationLayerProtocols.length) {
 		const protocols = applicationLayerProtocols.map(alp => (
 			// 1 byte for length
-			packWithLength(strToUint8Array(alp)).slice(1)
+			packWithLength(asciiToUint8Array(alp)).slice(1)
 		))
 		extensionsList.push(
 			packExtension({
@@ -229,7 +229,7 @@ function packServerNameExtension(host: string) {
 			// specify that this is a server hostname
 			new Uint8Array([ 0x0 ]),
 			// pack the remaining data prefixed with length
-			packWithLength(strToUint8Array(host))
+			packWithLength(asciiToUint8Array(host))
 		])
 	})
 }

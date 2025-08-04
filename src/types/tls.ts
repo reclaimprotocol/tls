@@ -1,7 +1,7 @@
-import type { CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from '../utils/constants'
-import type { Key } from './crypto'
-import { Logger } from './logger'
-import type { X509Certificate } from './x509'
+import type { CONTENT_TYPE_MAP, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from '../utils/constants.ts'
+import type { Key } from './crypto.ts'
+import type { Logger } from './logger.ts'
+import type { X509Certificate } from './x509.ts'
 
 export type TLSProtocolVersion = keyof typeof TLS_PROTOCOL_VERSION_MAP
 
@@ -105,7 +105,7 @@ export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {
 
 	logger?: Logger
 
-	write(packet: TLSPacket, ctx: TLSPacketContext): Promise<void>
+	write(packet: TLSPacket, ctx: TLSPacketContext): Promise<void> | void
 }
 
 export type TLSPresharedKey = {
