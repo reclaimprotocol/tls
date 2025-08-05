@@ -66,8 +66,19 @@ export function asciiToUint8Array(str: string) {
 	return bytes
 }
 
-export function uint8ArrayToStr(arr: Uint8Array) {
-	return new TextDecoder().decode(arr)
+/**
+ * convert a Uint8Array to a binary encoded str
+ * from: https://github.com/feross/buffer/blob/795bbb5bda1b39f1370ebd784bea6107b087e3a7/index.js#L1063
+ * @param buf
+ * @returns
+ */
+export function uint8ArrayToBinaryStr(buf: Uint8Array) {
+	let ret = ''
+	for(const v of buf) {
+		ret += String.fromCharCode(v)
+	}
+
+	return ret
 }
 
 export function generateIV(iv: Uint8Array, recordNumber: number) {

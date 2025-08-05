@@ -1,6 +1,6 @@
 import { Socket } from 'net'
 import { pino } from 'pino'
-import { makeTLSClient, uint8ArrayToStr } from '../index.ts'
+import { makeTLSClient, uint8ArrayToBinaryStr } from '../index.ts'
 
 const LOGGER = pino()
 LOGGER.level = process.env.LOG_LEVEL || 'info'
@@ -30,7 +30,7 @@ await new Promise<void>((resolve, reject) => {
 			socket.end()
 		},
 		onApplicationData(plaintext) {
-			const str = uint8ArrayToStr(plaintext)
+			const str = uint8ArrayToBinaryStr(plaintext)
 			console.log('received application data: ', str)
 		},
 		onTlsEnd(error) {

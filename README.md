@@ -82,7 +82,7 @@ After you've set the crypto implementation, you can use the TLS client like this
 
 ``` ts
 import { Socket } from 'net'
-import { makeTLSClient, uint8ArrayToStr } from '@reclaimprotocol/tls'
+import { makeTLSClient, uint8ArrayToBinaryStr } from '@reclaimprotocol/tls'
 
 const socket = new Socket()
 const host = 'www.google.com'
@@ -113,7 +113,7 @@ const tls = makeTLSClient({
 		tls.write(Buffer.from(getReq))
 	},
 	onApplicationData(plaintext) {
-		const str = uint8ArrayToStr(plaintext)
+		const str = uint8ArrayToBinaryStr(plaintext)
 		console.log('received application data: ', str)
 	},
 	onTlsEnd(error) {

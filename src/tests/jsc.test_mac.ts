@@ -11,7 +11,7 @@ import { readFile } from 'fs/promises'
 import { Socket } from 'net'
 import { after, afterEach, before, beforeEach, describe, it, mock } from 'node:test'
 import { stderr, stdout } from 'process'
-import { asciiToUint8Array, uint8ArrayToStr } from '../utils/generics.ts'
+import { asciiToUint8Array, uint8ArrayToBinaryStr } from '../utils/generics.ts'
 import { createMockTLSServer } from './mock-tls-server.ts'
 import { delay, waitForMockCall } from './utils.ts'
 
@@ -162,7 +162,7 @@ async function runJscBridge(
 }
 
 function tryReadCmd(str: string | Uint8Array): JscOutgoingCmd | undefined {
-	str = typeof str === 'string' ? str : uint8ArrayToStr(str)
+	str = typeof str === 'string' ? str : uint8ArrayToBinaryStr(str)
 	try {
 		const cmd = JSON.parse(str)
 		return cmd as JscOutgoingCmd

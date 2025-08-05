@@ -1,6 +1,6 @@
 import type { SupportedExtensionClientData, SupportedExtensionServerData } from '../types/index.ts'
 import { SUPPORTED_EXTENSION_MAP, SUPPORTED_EXTENSIONS, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES } from './constants.ts'
-import { areUint8ArraysEqual, getTlsVersionFromBytes, uint8ArrayToStr } from './generics.ts'
+import { areUint8ArraysEqual, getTlsVersionFromBytes, uint8ArrayToBinaryStr } from './generics.ts'
 import { expectReadWithLength } from './packets.ts'
 
 /**
@@ -12,7 +12,7 @@ export function parseServerExtensions(data: Uint8Array) {
 		'ALPN': (extData) => {
 			const data = expectReadWithLength(extData)
 			const alpnBytes = expectReadWithLength(data, 1)
-			return uint8ArrayToStr(alpnBytes)
+			return uint8ArrayToBinaryStr(alpnBytes)
 		},
 		'SUPPORTED_VERSIONS': getTlsVersionFromBytes,
 		'PRE_SHARED_KEY': () => ({ supported: true }),
@@ -43,7 +43,7 @@ export function parseClientExtensions(data: Uint8Array) {
 			const serverNameBytes = expectReadWithLength(extData)
 			return {
 				type: byte,
-				serverName: uint8ArrayToStr(serverNameBytes)
+				serverName: uint8ArrayToBinaryStr(serverNameBytes)
 			}
 		}
 	})
