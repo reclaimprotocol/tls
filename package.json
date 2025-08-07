@@ -13,8 +13,8 @@
 			"default": "./lib/crypto/webcrypto.js"
 		},
 		"./purejs-crypto": {
-			"types": "./lib/crypto/purejs.d.ts",
-			"default": "./lib/crypto/purejs.js"
+			"types": "./lib/crypto/pure-js.d.ts",
+			"default": "./lib/crypto/pure-js.js"
 		}
 	},
 	"scripts": {
