@@ -23,7 +23,7 @@
 		"run:tsc": "node --experimental-strip-types",
 		"test:pure-js": "npm run run:tsc -- --import=./src/tests/load-purejs-crypto.ts --test",
 		"test:webcrypto": "npm run run:tsc -- --import=./src/tests/load-webcrypto.ts --test",
-		"handshake": "npm run run:tsc -- --import=./src/tests/load-purejs-crypto.ts ./src/scripts/handshake.ts",
+		"handshake": "npm run run:tsc -- --import=./src/tests/load-webcrypto.ts ./src/scripts/handshake.ts",
 		"lint": "eslint . --ext .js,.ts,.jsx,.tsx",
 		"lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx",
 		"prepare": "npm run build",

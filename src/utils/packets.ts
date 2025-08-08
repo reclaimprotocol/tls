@@ -1,4 +1,4 @@
-import type { Logger, ProcessPacket, TLSProtocolVersion } from '../types/index.ts'
+import type { Logger, TLSPacketWithType, TLSProtocolVersion } from '../types/index.ts'
 import { PACKET_TYPE, TLS_PROTOCOL_VERSION_MAP } from './constants.ts'
 import { concatenateUint8Arrays, uint8ArrayToDataView } from './generics.ts'
 
@@ -116,7 +116,7 @@ export function makeMessageProcessor(logger: Logger) {
 		 * or a single packet
 		 * @param onChunk handle a complete packet
 		 */
-		async onData(packet: Uint8Array, onChunk: ProcessPacket) {
+		*onData(packet: Uint8Array) {
 			buffer = concatenateUint8Arrays([ buffer, packet ])
 			while(buffer.length) {
 				// if we already aren't processing a packet
@@ -151,7 +151,7 @@ export function makeMessageProcessor(logger: Logger) {
 					// remove the packet header
 					buffer = buffer.slice(5)
 					logger.trace(
-						{ bytesLeft, type: currentMessageType },
+						{ bytesLeft, recvBuffer: buffer.length, type: currentMessageType },
 						'starting processing packet'
 					)
 				}
@@ -165,10 +165,13 @@ export function makeMessageProcessor(logger: Logger) {
 				const body = buffer.slice(0, bytesLeft)
 
 				logger.trace({ type: currentMessageType }, 'got complete packet')
-				await onChunk(currentMessageType, {
-					header: currentMessageHeader!,
-					content: body
-				})
+				const pktWithType: TLSPacketWithType = {
+					type: currentMessageType,
+					packet: {
+						header: currentMessageHeader!,
+						content: body
+					}
+				}
 
 				currentMessageType = undefined
 
@@ -176,6 +179,8 @@ export function makeMessageProcessor(logger: Logger) {
 				// then that means we have another packet in the chunk
 				// this will be processed in the next iteration of the loop
 				buffer = buffer.slice(body.length)
+
+				yield pktWithType
 			}
 		},
 		reset() {

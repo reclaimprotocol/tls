@@ -140,8 +140,11 @@ export type TLSEventHandlers = {
 	onSessionTicket?(ticket: TLSSessionTicket): void
 }
 
-export type ProcessPacket = (type: number, packet: TLSPacket) => void
+export type TLSPacketWithType = {
+	type: number
+	packet: TLSPacket
+}
 
 export type PacketProcessor = {
-	onData(data: Uint8Array, onChunk: ProcessPacket): void
+	onData(data: Uint8Array): Generator<TLSPacketWithType>
 }

@@ -20,7 +20,7 @@ await new Promise<void>((resolve, reject) => {
 		verifyServerCertificate: true,
 		logger: LOGGER,
 		// write raw bytes to the socket
-		async write({ header, content }) {
+		write({ header, content }) {
 			socket.write(header)
 			socket.write(content)
 		},
@@ -46,8 +46,14 @@ await new Promise<void>((resolve, reject) => {
 
 	socket.on('data', tls.handleReceivedBytes)
 	// start handshake as soon as the socket connects
-	socket.on('connect', () => tls.startHandshake())
+	socket.once('connect', () => tls.startHandshake())
 	socket.once('error', (err) => reject(err))
+	socket.once('close', () => {
+		console.log('Socket closed')
+		if(!tls.isHandshakeDone()) {
+			reject(new Error('Handshake was not completed before socket closed'))
+		}
+	})
 	// use the TCP socket to connect to the server
 	socket.connect({ host, port })
 })

@@ -1,5 +1,5 @@
 import { crypto } from './crypto/index.ts'
-import type { CipherSuite, Key, KeyPair, ProcessPacket, TLSClientOptions, TLSHandshakeOptions, TLSKeyType, TLSPacket, TLSPacketContext, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types/index.ts'
+import type { CipherSuite, Key, KeyPair, TLSClientOptions, TLSHandshakeOptions, TLSKeyType, TLSPacket, TLSPacketContext, TLSPacketWithType, TLSProtocolVersion, TLSSessionTicket, X509Certificate } from './types/index.ts'
 import { packClientHello } from './utils/client-hello.ts'
 import { CONTENT_TYPE_MAP, MAX_ENC_PACKET_SIZE, PACKET_TYPE, SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_NAMED_CURVES, SUPPORTED_RECORD_TYPE_MAP } from './utils/constants.ts'
 import type { SharedKeyData } from './utils/decryption-utils.ts'
@@ -65,7 +65,9 @@ export function makeTLSClient({
 	let clientCertificateRequested = false
 	let certificatesVerified = false
 
-	const processPacketUnsafe: ProcessPacket = async(type, { header, content }) => {
+	const processPacketUnsafe = async(
+		{ type, packet: { content, header } }: TLSPacketWithType
+	) => {
 		if(ended) {
 			logger.warn('connection closed, ignoring packet')
 			return
@@ -173,8 +175,8 @@ export function makeTLSClient({
 		}
 	}
 
-	const processPacket: ProcessPacket = (...args) => (
-		enqueueServerPacket(processPacketUnsafe, ...args)
+	const processPacket = (pkt: TLSPacketWithType) => (
+		enqueueServerPacket(processPacketUnsafe, pkt)
 	)
 
 	async function processRecord(
@@ -799,8 +801,10 @@ export function makeTLSClient({
 		 * Handle bytes received from the server.
 		 * Could be a complete or partial TLS packet
 		 */
-		handleReceivedBytes(data: Uint8Array) {
-			return processor.onData(data, processPacket)
+		async handleReceivedBytes(data: Uint8Array) {
+			for(const pkt of processor.onData(data)) {
+				await processPacket(pkt)
+			}
 		},
 		/**
 		 * Handle a complete TLS packet received
