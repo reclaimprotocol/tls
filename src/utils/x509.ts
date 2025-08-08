@@ -86,6 +86,16 @@ function getSigAlgorithm(
 			throw new Error(`Unsupported hash algorithm: ${hash.name}`)
 		}
 
+	case 'ECDSA':
+		switch (hash.name) {
+		case 'SHA-256':
+			return 'ECDSA-SECP256R1-SHA256'
+		case 'SHA-384':
+			return 'ECDSA-SECP384R1-SHA384'
+		default:
+			throw new Error(`Unsupported hash algorithm: ${hash.name}`)
+		}
+
 	default:
 		throw new Error(`Unsupported signature algorithm: ${name}`)
 	}
