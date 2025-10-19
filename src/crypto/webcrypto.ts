@@ -123,6 +123,7 @@ export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 		case 'RSA-PCKS1_5':
 			return parseRsaPublicKeyFromAsn1(raw) as unknown as WebCrypto.CryptoKey
 		case 'ECDSA-SECP256R1-SHA256':
+		case 'ECDSA-SECP256R1-SHA384':
 			keyType = 'spki'
 			keyUsages = ['verify']
 			subtleArgs = {
@@ -131,6 +132,7 @@ export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 			}
 			break
 		case 'ECDSA-SECP384R1-SHA384':
+		case 'ECDSA-SECP384R1-SHA256':
 			keyType = 'spki'
 			keyUsages = ['verify']
 			subtleArgs = {
@@ -302,12 +304,14 @@ export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 			}
 			break
 		case 'ECDSA-SECP256R1-SHA256':
-			signature = convertASN1toRS(signature)
-			verifyArgs = { name: 'ECDSA', hash: 'SHA-256' }
-			break
+		case 'ECDSA-SECP256R1-SHA384':
+		case 'ECDSA-SECP384R1-SHA256':
 		case 'ECDSA-SECP384R1-SHA384':
 			signature = convertASN1toRS(signature)
-			verifyArgs = { name: 'ECDSA', hash: 'SHA-384' }
+			verifyArgs = {
+				name: 'ECDSA',
+				hash: alg.includes('SHA256') ? 'SHA-256' : 'SHA-384'
+			}
 			break
 		default:
 			throw new Error(`Unsupported algorithm ${alg}`)

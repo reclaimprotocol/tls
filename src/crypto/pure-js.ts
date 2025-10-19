@@ -117,20 +117,16 @@ export const pureJsCrypto: Crypto<Uint8Array> = {
 		return { plaintext: decrypted }
 	},
 	verify(alg, { data, signature, publicKey }) {
-		if(alg === 'ECDSA-SECP256R1-SHA256') {
+		if(
+			alg === 'ECDSA-SECP384R1-SHA384'
+			|| alg === 'ECDSA-SECP384R1-SHA256'
+			|| alg === 'ECDSA-SECP256R1-SHA384'
+			|| alg === 'ECDSA-SECP256R1-SHA256'
+		) {
 			const parsedPubKey = parseAsn1PublicKey(publicKey)
-			return p256.verify(signature, data, parsedPubKey, {
-				prehash: true,
-				format: 'der'
-			})
-		}
-
-		if(alg === 'ECDSA-SECP384R1-SHA384') {
-			const parsedPubKey = parseAsn1PublicKey(publicKey)
-			return p384.verify(signature, data, parsedPubKey, {
-				prehash: true,
-				format: 'der'
-			})
+			const curv = alg.includes('P-384') ? p384 : p256
+			return curv
+				.verify(signature, data, parsedPubKey, { prehash: true, format: 'der' })
 		}
 
 		if(alg === 'RSA-PSS-SHA256') {

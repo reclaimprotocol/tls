@@ -48,7 +48,7 @@ export function loadX509FromPem(
 			}
 		},
 		async verifyIssued(otherCert) {
-			const sigAlg = getSigAlgorithm(otherCert.internal)
+			const sigAlg = getSigAlgorithm(cert.publicKey, otherCert.internal)
 			const impPublicKey = await crypto
 				.importKey(sigAlg, new Uint8Array(cert.publicKey.rawData), 'public')
 			const signature = new Uint8Array(otherCert.internal.signature)
@@ -66,34 +66,52 @@ export function loadX509FromPem(
 }
 
 function getSigAlgorithm(
-	{ signatureAlgorithm }: peculiar.X509Certificate,
+	key: peculiar.PublicKey, { signatureAlgorithm }: peculiar.X509Certificate
 ): SignatureAlgorithm {
 	if(!('name' in signatureAlgorithm)) {
 		throw new Error('Missing signature algorithm name')
 	}
 
 	const { name, hash } = signatureAlgorithm
+
+	const { algorithm: keyAlg } = key
+	if(keyAlg.name !== name) {
+		throw new Error(
+			`Signature algorithm ${name} does not match`
+			+ ` public key algorithm ${keyAlg.name}`
+		)
+	}
+
+	let hashName: 'SHA256' | 'SHA384' | 'SHA512'
+	switch (hash.name) {
+	case 'SHA-256':
+		hashName = 'SHA256'
+		break
+	case 'SHA-384':
+		hashName = 'SHA384'
+		break
+	case 'SHA-512':
+		hashName = 'SHA512'
+		break
+	default:
+		throw new Error(`Unsupported hash algorithm: ${hash.name}`)
+	}
+
 	switch (name) {
 	case 'RSASSA-PKCS1-v1_5':
-		switch (hash.name) {
-		case 'SHA-256':
-			return 'RSA-PKCS1-SHA256'
-		case 'SHA-384':
-			return 'RSA-PKCS1-SHA384'
-		case 'SHA-512':
-			return 'RSA-PKCS1-SHA512'
-		default:
-			throw new Error(`Unsupported hash algorithm: ${hash.name}`)
+		return `RSA-PKCS1-${hashName}`
+	case 'ECDSA':
+		if(hashName === 'SHA512') {
+			throw new Error(`Unsupported hash algorithm for ECDSA: ${hashName}`)
 		}
 
-	case 'ECDSA':
-		switch (hash.name) {
-		case 'SHA-256':
-			return 'ECDSA-SECP256R1-SHA256'
-		case 'SHA-384':
-			return 'ECDSA-SECP384R1-SHA384'
+		switch (keyAlg.namedCurve) {
+		case 'P-256':
+			return `ECDSA-SECP256R1-${hashName}`
+		case 'P-384':
+			return `ECDSA-SECP384R1-${hashName}`
 		default:
-			throw new Error(`Unsupported hash algorithm: ${hash.name}`)
+			throw new Error(`Unsupported named curve: ${keyAlg.namedCurve}`)
 		}
 
 	default:
