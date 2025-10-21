@@ -1,12 +1,12 @@
 import './additional-root-cas.js'
 import { crypto } from '../crypto/index.ts'
-import type { CertificatePublicKey, CipherSuite, Key, TLSProcessContext, X509Certificate } from '../types/index.ts'
+import type { CertificatePublicKey, CipherSuite, Key, Logger, TLSProcessContext, X509Certificate } from '../types/index.ts'
 import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants.ts'
 import { getHash } from './decryption-utils.ts'
 import { areUint8ArraysEqual, asciiToUint8Array, concatenateUint8Arrays } from './generics.ts'
 import { MOZILLA_ROOT_CA_LIST } from './mozilla-root-cas.ts'
 import { expectReadWithLength, packWithLength } from './packets.ts'
-import { loadX509FromDer, loadX509FromPem } from './x509.ts'
+import { defaultFetchCertificateBytes, loadX509FromDer, loadX509FromPem } from './x509.ts'
 
 type VerifySignatureOptions = {
 	signature: Uint8Array
@@ -111,8 +111,7 @@ export async function verifyCertificateSignature({
 }
 
 export async function getSignatureDataTls13(
-	hellos: Uint8Array[] | Uint8Array,
-	cipherSuite: CipherSuite
+	hellos: Uint8Array[] | Uint8Array, cipherSuite: CipherSuite
 ) {
 	const handshakeHash = await getHash(hellos, cipherSuite)
 	return concatenateUint8Arrays([
@@ -155,6 +154,8 @@ export async function getSignatureDataTls12(
 export async function verifyCertificateChain(
 	chain: X509Certificate[],
 	host: string,
+	logger: Logger,
+	fetchCertificateBytes = defaultFetchCertificateBytes,
 	additionalRootCAs?: X509Certificate[]
 ) {
 	const rootCAs = [
@@ -162,67 +163,72 @@ export async function verifyCertificateChain(
 		...(additionalRootCAs || [])
 	]
 
+	const leaf = chain[0]
 	const commonNames = [
-		...chain[0].getSubjectField('CN'),
-		...chain[0].getAlternativeDNSNames()
+		...leaf.getSubjectField('CN'),
+		...leaf.getAlternativeDNSNames()
 	]
 	if(!commonNames.some(cn => matchHostname(host, cn))) {
 		throw new Error(`Certificate is not for host ${host}`)
 	}
 
-
-	const tmpChain = [...chain]
-	let currentCert = tmpChain.shift()!
-	let rootIssuer: X509Certificate<any> | undefined
-	// look for issuers until we hit the end or find root CA that signed one of them
-	while(!rootIssuer) {
-		const cn = currentCert.getSubjectField('CN')
-
-		if(!currentCert.isWithinValidity()) {
-			throw new Error(`Certificate ${cn} is not within validity period`)
+	chain = [...chain] // clone to allow appending fetched certs
+	for(let i = 0; i < chain.length; i++) {
+		const cert = chain[i]
+		const cn = cert.getSubjectField('CN')
+		if(!cert.isWithinValidity()) {
+			throw new Error(`Certificate ${cn} (i: ${i}) is outside validity`)
 		}
 
-		rootIssuer = rootCAs.find(r => r.isIssuer(currentCert))
-
-		if(!rootIssuer) {
-			const issuer = findIssuer(tmpChain, currentCert)
-
-			//in case there are orphan certificates in chain
-			if(!issuer) {
-				break
-			}
-
-			if(!(await issuer.cert.verifyIssued(currentCert))) {
-				throw new Error(`Certificate ${cn} issue verification failed`)
-			}
-
-			currentCert = issuer.cert
-			//remove issuer cert from chain
-			tmpChain.splice(issuer.index, 1)
+		// look in our chain for issuer
+		let issuer = findIssuer(chain.slice(i + 1), cert)
+		// if not found, check in our root CAs
+		if(!issuer) {
+			issuer = findIssuer(rootCAs, cert)
 		}
-	}
 
-	if(!rootIssuer) {
-		throw new Error('Root CA not found. Could not verify certificate')
-	}
+		// if not found, we'll try fetching it via AIA extension
+		if(!issuer) {
+			const aiaExt = cert.getAIAExtension()
+			if(!aiaExt) {
+				throw new Error(`Missing issuer for certificate ${cn} (i: ${i})`)
+			}
 
-	const verified = await rootIssuer.verifyIssued(currentCert)
-	if(!verified) {
-		throw new Error('Root CA did not issue certificate')
-	}
+			if(TLS_INTERMEDIATE_CA_CACHE?.[aiaExt]) {
+				issuer = TLS_INTERMEDIATE_CA_CACHE[aiaExt]
+			} else {
+				logger.debug(
+					{ aiaExt, cn },
+					'fetching issuer certificate via AIA extension'
+				)
 
-	if(!rootIssuer.isWithinValidity()) {
-		throw new Error('CA certificate is not within validity period')
-	}
+				const bytes = await fetchCertificateBytes(aiaExt)
+				issuer = await loadX509FromPem(bytes)
+				// we'll need to verify this cert below too
+				chain.push(issuer)
 
-	function findIssuer(chain:X509Certificate[], cert: X509Certificate) {
-		for(const [i, element] of chain.entries()) {
-			if(element.isIssuer(cert)) {
-				return { cert: element, index: i }
+				TLS_INTERMEDIATE_CA_CACHE[aiaExt] = issuer
 			}
 		}
 
-		return null
+		if(!issuer.isWithinValidity()) {
+			throw new Error(`Issuer Cert ${cn} is not within validity period`)
+		}
+
+		if(!(await issuer.verifyIssued(cert))) {
+			const icn = issuer.getSubjectField('CN')
+			throw new Error(
+				`Verification of ${cn} failed by issuer ${icn} (i: ${i})`
+			)
+		}
+	}
+}
+
+function findIssuer(chain: X509Certificate[], cert: X509Certificate) {
+	for(const element of chain) {
+		if(element.isIssuer(cert)) {
+			return element
+		}
 	}
 }
 

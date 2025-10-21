@@ -1,12 +1,16 @@
 /* eslint indent: 0 */
 
 let TLS_ADDITIONAL_ROOT_CA_LIST
+let TLS_INTERMEDIATE_CA_CACHE
 if(typeof globalThis === 'object' && globalThis) {
 	TLS_ADDITIONAL_ROOT_CA_LIST = (globalThis.TLS_ADDITIONAL_ROOT_CA_LIST ||= [])
+	TLS_INTERMEDIATE_CA_CACHE = (globalThis.TLS_INTERMEDIATE_CA_CACHE ||= {})
 } else if(typeof window === 'object' && window) {
 	TLS_ADDITIONAL_ROOT_CA_LIST = (window.TLS_ADDITIONAL_ROOT_CA_LIST ||= [])
+	TLS_INTERMEDIATE_CA_CACHE = (window.TLS_INTERMEDIATE_CA_CACHE ||= {})
 } else {
 	TLS_ADDITIONAL_ROOT_CA_LIST = []
+	TLS_INTERMEDIATE_CA_CACHE = {}
 }
 
 TLS_ADDITIONAL_ROOT_CA_LIST.push(

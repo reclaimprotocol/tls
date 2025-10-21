@@ -12,6 +12,7 @@ As all the cryptography is handled by either "webcrypto" or a "pure-js" implemen
 
 1. The ChaCha20-Poly1305 cipher is not supported via WebCrypto -- so we utilise `@stablelib/chacha20-poly1305` to provide this functionality.
 2. To handle X509 certificate validation we utilise `@peculiar/x509`
+3. Optionally a few other crypto dependencies are used when using the `pure-js` implementation. These can be excluded when using WebCrypto.
 
 ## Supported Crypto Suites & Versions
 
@@ -52,6 +53,7 @@ As all the cryptography is handled by either "webcrypto" or a "pure-js" implemen
 ### Certificates
 - The entire Mozilla CA store is supported
 - A few additional certificates have also been added. See `src/utils/root-ca.ts`
+- We also implement fetching intermediate certificates via AIA fetching. Any fetched certificates are also then verified against the root CA store.
 
 ## Install
 

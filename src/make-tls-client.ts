@@ -31,6 +31,7 @@ export function makeTLSClient({
 	supportedProtocolVersions,
 	signatureAlgorithms,
 	applicationLayerProtocols,
+	fetchCertificateBytes,
 	write,
 	onRead,
 	onApplicationData,
@@ -242,8 +243,10 @@ export function makeTLSClient({
 
 					logger.debug({ len: certificates.length }, 'parsed certificates')
 
-					if(verifyServerCertificate) {
-						await verifyCertificateChain(certificates, host, rootCAs)
+					if(verifyServerCertificate && !certificatesVerified) {
+						await verifyCertificateChain(
+							certificates, host, logger, fetchCertificateBytes, rootCAs
+						)
 						logger.debug('verified certificate chain')
 
 						certificatesVerified = true
@@ -339,8 +342,10 @@ export function makeTLSClient({
 
 					logger.debug('verified server key share signature')
 
-					if(verifyServerCertificate) {
-						await verifyCertificateChain(certificates, host, rootCAs)
+					if(verifyServerCertificate && !certificatesVerified) {
+						await verifyCertificateChain(
+							certificates, host, logger, fetchCertificateBytes, rootCAs
+						)
 						logger.debug('verified certificate chain')
 
 						certificatesVerified = true

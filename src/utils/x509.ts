@@ -4,6 +4,8 @@ import { crypto } from '../crypto/index.ts'
 // not using types/index to avoid circular dependency
 import type { SignatureAlgorithm, X509Certificate } from '../types/index.ts'
 
+const AIA_EXT_TYPE = '1.3.6.1.5.5.7.1.1'
+
 export function loadX509FromPem(
 	pem: string | Uint8Array
 ): X509Certificate<peculiar.X509Certificate> {
@@ -19,6 +21,11 @@ export function loadX509FromPem(
 		isWithinValidity() {
 			const now = new Date()
 			return now > cert.notBefore && now < cert.notAfter
+		},
+		getAIAExtension() {
+			const aiaExt = cert
+				.getExtension(AIA_EXT_TYPE) as peculiar.AuthorityInfoAccessExtension
+			return aiaExt?.caIssuers?.find(obj => obj.type === 'url')?.value
 		},
 		getSubjectField(name) {
 			return cert.subjectName.getField(name)
@@ -122,4 +129,14 @@ function getSigAlgorithm(
 export function loadX509FromDer(der: Uint8Array) {
 	// peculiar handles both
 	return loadX509FromPem(der)
+}
+
+export async function defaultFetchCertificateBytes(url: string) {
+	const res = await fetch(url)
+	if(!res.ok) {
+		throw new Error(`Failed to fetch certificate from ${url}: ${res.statusText}`)
+	}
+
+	const buffer = await res.arrayBuffer()
+	return new Uint8Array<any>(buffer)
 }

@@ -91,6 +91,12 @@ export type TLSConnectionOptions = TLSHelloBaseOptions & {
 	 * if provided, the server certificate will be verified against these root CAs
 	 */
 	rootCAs?: X509Certificate[]
+	/**
+	 * Fetch certificate bytes from a URL
+	 * Used when the AIA extension is present in a certificate
+	 * to fetch the issuer certificate
+	 */
+	fetchCertificateBytes?(url: string): Promise<Uint8Array>
 }
 
 export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {
