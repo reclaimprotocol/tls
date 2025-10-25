@@ -89,7 +89,7 @@ function getSigAlgorithm(
 		)
 	}
 
-	let hashName: 'SHA256' | 'SHA384' | 'SHA512'
+	let hashName: 'SHA256' | 'SHA384' | 'SHA512' | 'SHA1'
 	switch (hash.name) {
 	case 'SHA-256':
 		hashName = 'SHA256'
@@ -100,15 +100,19 @@ function getSigAlgorithm(
 	case 'SHA-512':
 		hashName = 'SHA512'
 		break
+	case 'SHA-1':
+		hashName = 'SHA1'
+		break
 	default:
 		throw new Error(`Unsupported hash algorithm: ${hash.name}`)
 	}
 
 	switch (name) {
 	case 'RSASSA-PKCS1-v1_5':
+	case 'RSA-PKCS1-SHA1':
 		return `RSA-PKCS1-${hashName}`
 	case 'ECDSA':
-		if(hashName === 'SHA512') {
+		if(hashName === 'SHA512' || hashName === 'SHA1') {
 			throw new Error(`Unsupported hash algorithm for ECDSA: ${hashName}`)
 		}
 

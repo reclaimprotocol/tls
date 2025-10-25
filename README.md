@@ -34,6 +34,7 @@ As all the cryptography is handled by either "webcrypto" or a "pure-js" implemen
 - RSA-PKCS1-SHA256
 - RSA-PKCS1-SHA384
 - RSA-PKCS1-SHA512
+- RSA-PKCS1-SHA1
 
 ### Cipher Suites (TLS 1.3)
 - AES-128-GCM-SHA256

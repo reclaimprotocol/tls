@@ -17,6 +17,7 @@ export type SignatureAlgorithm = 'RSA-PSS-SHA256'
 	| 'RSA-PKCS1-SHA512'
 	| 'RSA-PKCS1-SHA384'
 	| 'RSA-PKCS1-SHA256'
+	| 'RSA-PKCS1-SHA1'
 
 export type HashAlgorithm = 'SHA-256' | 'SHA-384' | 'SHA-1'
 
