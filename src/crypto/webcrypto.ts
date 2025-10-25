@@ -6,7 +6,7 @@ import type { webcrypto as WebCrypto } from 'crypto'
 import { webcrypto } from 'crypto'
 import type { PublicKey as RSAPubKey } from 'micro-rsa-dsa-dh/rsa.js'
 import { PKCS1_KEM } from 'micro-rsa-dsa-dh/rsa.js'
-import type { AsymmetricCryptoAlgorithm, Crypto } from '../types/crypto.ts'
+import type { AsymmetricCryptoAlgorithm, Crypto, SignatureAlgorithm } from '../types/crypto.ts'
 import { asciiToUint8Array, concatenateUint8Arrays } from '../utils/generics.ts'
 import { parseRsaPublicKeyFromAsn1 } from './common.ts'
 
@@ -116,37 +116,20 @@ export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 			keyUsages = ['verify']
 			subtleArgs = {
 				name: 'RSASSA-PKCS1-v1_5',
-				hash: alg === 'RSA-PKCS1-SHA256'
-					? 'SHA-256'
-					: (
-						alg === 'RSA-PKCS1-SHA384'
-							? 'SHA-384'
-							: (
-								alg === 'RSA-PKCS1-SHA1'
-									? 'SHA-1'
-									: 'SHA-512'
-							)
-					)
+				hash: getHashAlgorithm(alg),
 			}
 			break
 		case 'RSA-PCKS1_5':
 			return parseRsaPublicKeyFromAsn1(raw) as unknown as WebCrypto.CryptoKey
 		case 'ECDSA-SECP256R1-SHA256':
 		case 'ECDSA-SECP256R1-SHA384':
-			keyType = 'spki'
-			keyUsages = ['verify']
-			subtleArgs = {
-				name: 'ECDSA',
-				namedCurve: 'P-256',
-			}
-			break
 		case 'ECDSA-SECP384R1-SHA384':
 		case 'ECDSA-SECP384R1-SHA256':
 			keyType = 'spki'
 			keyUsages = ['verify']
 			subtleArgs = {
 				name: 'ECDSA',
-				namedCurve: 'P-384',
+				namedCurve: alg.includes('P256') ? 'P-256' : 'P-384',
 			}
 			break
 		default:
@@ -306,26 +289,14 @@ export const webcryptoCrypto: Crypto<WebCrypto.CryptoKey> = {
 		case 'RSA-PKCS1-SHA256':
 		case 'RSA-PKCS1-SHA384':
 		case 'RSA-PKCS1-SHA1':
-			verifyArgs = {
-				name: 'RSASSA-PKCS1-v1_5',
-				hash: alg === 'RSA-PKCS1-SHA384'
-					? 'SHA-384'
-					: (
-						alg === 'RSA-PKCS1-SHA1'
-							? 'SHA-1'
-							: 'SHA-512'
-					)
-			}
+			verifyArgs = { name: 'RSASSA-PKCS1-v1_5' }
 			break
 		case 'ECDSA-SECP256R1-SHA256':
 		case 'ECDSA-SECP256R1-SHA384':
 		case 'ECDSA-SECP384R1-SHA256':
 		case 'ECDSA-SECP384R1-SHA384':
 			signature = convertASN1toRS(signature)
-			verifyArgs = {
-				name: 'ECDSA',
-				hash: alg.includes('SHA256') ? 'SHA-256' : 'SHA-384'
-			}
+			verifyArgs = { name: 'ECDSA', hash: getHashAlgorithm(alg) }
 			break
 		default:
 			throw new Error(`Unsupported algorithm ${alg}`)
@@ -383,4 +354,18 @@ function cleanBigNum(bn: Uint8Array) {
 	}
 
 	return bn
+}
+
+function getHashAlgorithm(sig: SignatureAlgorithm) {
+	if(sig.endsWith('SHA256')) {
+		return 'SHA-256'
+	} else if(sig.endsWith('SHA384')) {
+		return 'SHA-384'
+	} else if(sig.endsWith('SHA512')) {
+		return 'SHA-512'
+	} else if(sig.endsWith('SHA1')) {
+		return 'SHA-1'
+	}
+
+	throw new Error(`Unsupported signature algorithm: ${sig}`)
 }
