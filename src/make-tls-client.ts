@@ -702,6 +702,8 @@ export function makeTLSClient({
 	async function end(error?: Error) {
 		await enqueueServerPacket(() => { })
 
+		logger.trace({ err: error }, 'ended tls connection')
+
 		ended = true
 		handshakeDone = false
 		handshakeMsgs = []
@@ -807,9 +809,10 @@ export function makeTLSClient({
 		 * Could be a complete or partial TLS packet
 		 */
 		async handleReceivedBytes(data: Uint8Array) {
-			for(const pkt of processor.onData(data)) {
-				await processPacket(pkt)
-			}
+			await Promise.all(
+				Array.from(processor.onData(data))
+					.map(processPacket)
+			)
 		},
 		/**
 		 * Handle a complete TLS packet received
