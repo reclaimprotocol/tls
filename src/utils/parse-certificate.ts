@@ -1,6 +1,6 @@
 import './additional-root-cas.js'
 import { crypto } from '../crypto/index.ts'
-import type { CertificatePublicKey, CipherSuite, Key, Logger, TLSProcessContext, X509Certificate } from '../types/index.ts'
+import type { CertificatePublicKey, CipherSuite, Key, Logger, SignatureAlgorithm, TLSProcessContext, X509Certificate } from '../types/index.ts'
 import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants.ts'
 import { getHash } from './decryption-utils.ts'
 import { areUint8ArraysEqual, asciiToUint8Array, concatenateUint8Arrays } from './generics.ts'
@@ -12,6 +12,7 @@ type VerifySignatureOptions = {
 	signature: Uint8Array
 	algorithm: keyof typeof SUPPORTED_SIGNATURE_ALGS_MAP
 	publicKey: CertificatePublicKey
+	publicKeyType?: keyof typeof SUPPORTED_NAMED_CURVE_MAP
 	signatureData: Uint8Array
 }
 
@@ -96,8 +97,24 @@ export async function verifyCertificateSignature({
 	algorithm,
 	publicKey,
 	signatureData,
+	publicKeyType,
 }: VerifySignatureOptions) {
-	const { algorithm: cryptoAlg } = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm]
+	let cryptoAlg = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm].algorithm as SignatureAlgorithm
+	// correct signature algorithm if needed
+	if(
+		publicKeyType === 'SECP256R1'
+		&& cryptoAlg.includes('SECP384R1')
+	) {
+		// @ts-expect-error
+		cryptoAlg = cryptoAlg.replace('SECP384R1', 'SECP256R1')
+	} else if(
+		publicKeyType === 'SECP384R1'
+		&& cryptoAlg.includes('SECP256R1')
+	) {
+		// @ts-expect-error
+		cryptoAlg = cryptoAlg.replace('SECP256R1', 'SECP384R1')
+	}
+
 	const pubKey = await crypto.importKey(cryptoAlg, publicKey.buffer, 'public')
 	const verified = await crypto.verify(cryptoAlg, {
 		data: signatureData,

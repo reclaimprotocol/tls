@@ -338,6 +338,7 @@ export function makeTLSClient({
 						algorithm: keyShare.signatureAlgorithm,
 						publicKey: certificates[0].getPublicKey(),
 						signatureData: signatureData12,
+						publicKeyType: keyShare.publicKeyType,
 					})
 
 					logger.debug('verified server key share signature')

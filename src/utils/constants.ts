@@ -206,7 +206,7 @@ export const SUPPORTED_SIGNATURE_ALGS_MAP = {
 		identifier: new Uint8Array([ 0x04, 0x03 ]),
 		algorithm: 'ECDSA-SECP256R1-SHA256'
 	},
-	ECDSA_SECP384R1_SHA256: {
+	ECDSA_SECP384R1_SHA384: {
 		identifier: new Uint8Array([ 0x05, 0x03 ]),
 		algorithm: 'ECDSA-SECP384R1-SHA384'
 	},
