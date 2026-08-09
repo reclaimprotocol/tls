@@ -2,7 +2,6 @@
 // used to test that the TLS client works in the pure jsc environment
 // pls build via esbuild first
 import '../utils/additional-root-cas.js'
-
 import { setCryptoImplementation } from '../crypto/index.ts'
 import { pureJsCrypto } from '../crypto/pure-js.ts'
 import { makeTLSClient } from '../make-tls-client.ts'

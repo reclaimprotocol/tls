@@ -1,6 +1,5 @@
 import assert from 'node:assert'
 import { describe, it } from 'node:test'
-
 import { classifyHostIdentity } from '../utils/ip.ts'
 
 const ACCEPTED_IP_ADDRESSES = [

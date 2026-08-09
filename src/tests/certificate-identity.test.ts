@@ -1,7 +1,6 @@
 import assert from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
-
 import type { X509Certificate } from '../types/x509.ts'
 import { verifyCertificateChain } from '../utils/parse-certificate.ts'
 import { loadX509FromPem } from '../utils/x509.ts'

@@ -1,6 +1,5 @@
 import assert from 'node:assert'
 import { describe, it } from 'node:test'
-
 import { crypto } from '../crypto/index.ts'
 import { packClientHello } from '../utils/client-hello.ts'
 import { parseClientHello } from '../utils/parse-client-hello.ts'

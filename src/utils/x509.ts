@@ -8,7 +8,9 @@ const AIA_EXT_TYPE = '1.3.6.1.5.5.7.1.1'
 
 export function loadX509FromPem(
 	pem: string | Uint8Array
-): X509Certificate<peculiar.X509Certificate> {
+): X509Certificate<peculiar.X509Certificate> & {
+	getAlternativeIPAddresses(): string[]
+} {
 	let cert: peculiar.X509Certificate
 	try {
 		cert = new peculiar.X509Certificate(pem)

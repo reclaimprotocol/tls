@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import { crypto } from '../crypto/index.ts'
 import type { TLSPresharedKey } from '../types/index.ts'
 import { computeBinderSuffix, computeSharedKeys, computeSharedKeysTls12, encryptWrappedRecord, expectReadWithLength, getPskFromTicket, getSignatureDataTls13, loadX509FromPem, packPresharedKeyExtension, parseSessionTicket, toHexStringWithWhitespace, verifyCertificateChain, verifyCertificateSignature } from '../utils/index.ts'
-import { bufferFromHexStringWithWhitespace, expectBuffsEq } from './utils.ts'
+import { bufferFromHexStringWithWhitespace, expectBuffsEq, logger } from './utils.ts'
 
 const curve = 'X25519'
 
@@ -371,7 +371,7 @@ AwAxAAAA
 		]
 
 		await assert.rejects(
-			() => verifyCertificateChain(certs, 'github.com'),
+			() => verifyCertificateChain(certs, 'github.com', logger),
 			(err: Error) => {
 				return err.message === 'Certificate is not for host github.com'
 			}
