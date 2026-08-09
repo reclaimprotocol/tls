@@ -1,5 +1,6 @@
 import assert from 'node:assert'
 import { describe, it } from 'node:test'
+
 import { crypto } from '../crypto/index.ts'
 import { packClientHello } from '../utils/client-hello.ts'
 import { parseClientHello } from '../utils/parse-client-hello.ts'
@@ -13,14 +14,7 @@ const HOSTS = [
 describe('ClientHello server name', () => {
 	for(const [host, hasServerName] of HOSTS) {
 		it(`${hasServerName ? 'includes' : 'omits'} SNI for ${host}`, async() => {
-			const keyPair = await crypto.generateKeyPair('X25519')
-			const hello = await packClientHello({
-				host,
-				keysToShare: [{
-					type: 'X25519',
-					key: keyPair.pubKey
-				}]
-			})
+			const hello = await makeClientHello(host)
 			const serverName = parseClientHello(hello).extensions.SERVER_NAME
 
 			if(hasServerName) {
@@ -30,4 +24,24 @@ describe('ClientHello server name', () => {
 			}
 		})
 	}
+
+	for(const host of ['[2001:db8::1]', '2001:db8::1%eth0', '192.00.2.10']) {
+		it(`rejects invalid host identity ${host}`, async() => {
+			await assert.rejects(
+				() => makeClientHello(host),
+				new Error(`Invalid TLS host identity ${host}`)
+			)
+		})
+	}
 })
+
+async function makeClientHello(host: string) {
+	const keyPair = await crypto.generateKeyPair('X25519')
+	return packClientHello({
+		host,
+		keysToShare: [{
+			type: 'X25519',
+			key: keyPair.pubKey
+		}]
+	})
+}

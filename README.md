@@ -93,6 +93,8 @@ const socket = new Socket()
 const host = 'www.google.com'
 const port = 443
 
+// `host` is the bare TLS reference identity. Pass a DNS name, dotted-decimal
+// IPv4 address, or unbracketed IPv6 address; keep the port separate.
 const tls = makeTLSClient({
 	host,
 	// verify the server's certificate

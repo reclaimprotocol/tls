@@ -1,5 +1,44 @@
-export function parseIpLiteral(value: string): Uint8Array | null {
+export type HostIdentity = {
+	type: 'dns'
+	value: string
+} | {
+	type: 'ip'
+	value: Uint8Array
+}
+
+export function classifyHostIdentity(value: string): HostIdentity {
+	const ip = parseIpLiteral(value)
+	if(ip) {
+		return { type: 'ip', value: ip }
+	}
+
+	if(!isDnsIdentity(value)) {
+		throw new Error(`Invalid TLS host identity ${value}`)
+	}
+
+	return { type: 'dns', value }
+}
+
+function parseIpLiteral(value: string): Uint8Array | null {
 	return parseIpv4(value) || parseIpv6(value)
+}
+
+function isDnsIdentity(value: string) {
+	if(
+		!value
+		|| /\s/.test(value)
+		|| value.includes(':')
+		|| value.includes('%')
+		|| value.startsWith('[')
+		|| value.endsWith(']')
+	) {
+		return false
+	}
+
+	const labels = value.split('.')
+	return !labels.every(label => (
+		/^(?:[+-]?(?:\d+|0x[0-9a-f]+))?$/i.test(label)
+	))
 }
 
 function parseIpv4(value: string): Uint8Array | null {

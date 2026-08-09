@@ -1,10 +1,11 @@
 import './additional-root-cas.js'
+
 import { crypto } from '../crypto/index.ts'
 import type { CertificatePublicKey, CipherSuite, Key, Logger, SignatureAlgorithm, TLSProcessContext, X509Certificate } from '../types/index.ts'
 import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants.ts'
 import { getHash } from './decryption-utils.ts'
 import { areUint8ArraysEqual, asciiToUint8Array, concatenateUint8Arrays } from './generics.ts'
-import { parseIpLiteral } from './ip.ts'
+import { classifyHostIdentity } from './ip.ts'
 import { MOZILLA_ROOT_CA_LIST } from './mozilla-root-cas.ts'
 import { expectReadWithLength, packWithLength } from './packets.ts'
 import { defaultFetchCertificateBytes, loadX509FromDer, loadX509FromPem } from './x509.ts'
@@ -182,11 +183,18 @@ export async function verifyCertificateChain(
 	]
 
 	const leaf = chain[0]
-	const hostIp = parseIpLiteral(host)
-	const matchesIdentity = hostIp
-		? leaf.getAlternativeIPAddresses().some(value => {
-			const sanIp = parseIpLiteral(value)
-			return sanIp !== null && areUint8ArraysEqual(hostIp, sanIp)
+	const identity = classifyHostIdentity(host)
+	const matchesIdentity = identity.type === 'ip'
+		? (leaf.getAlternativeIPAddresses?.() || []).some(value => {
+			let sanIdentity
+			try {
+				sanIdentity = classifyHostIdentity(value)
+			} catch {
+				return false
+			}
+
+			return sanIdentity.type === 'ip'
+				&& areUint8ArraysEqual(identity.value, sanIdentity.value)
 		})
 		: [
 			...leaf.getSubjectField('CN'),

@@ -1,6 +1,7 @@
 import assert from 'node:assert'
 import { describe, it } from 'node:test'
-import { parseIpLiteral } from '../utils/ip.ts'
+
+import { classifyHostIdentity } from '../utils/ip.ts'
 
 const ACCEPTED_IP_ADDRESSES = [
 	['0.0.0.0', '00000000'],
@@ -28,6 +29,7 @@ const REJECTED_IP_ADDRESSES = [
 	' 192.0.2.10',
 	'192.0.2.10 ',
 	'192.0.2.10.',
+	'192.0.2.10:443',
 	'2001:db8::1::1',
 	'1:2:3:4:5:6:7:8:9',
 	'1:2:3:4:5:6:7',
@@ -43,15 +45,31 @@ const REJECTED_IP_ADDRESSES = [
 describe('IP literal parser', () => {
 	for(const [value, expected] of ACCEPTED_IP_ADDRESSES) {
 		it(`parses ${value} to canonical bytes`, () => {
-			const result = parseIpLiteral(value)
-			assert.ok(result)
-			assert.equal(Buffer.from(result).toString('hex'), expected)
+			const identity = classifyHostIdentity(value)
+			assert.equal(identity.type, 'ip')
+			if(identity.type !== 'ip') {
+				return
+			}
+
+			assert.equal(Buffer.from(identity.value).toString('hex'), expected)
 		})
 	}
 
 	for(const value of REJECTED_IP_ADDRESSES) {
-		it(`rejects ${JSON.stringify(value)}`, () => {
-			assert.equal(parseIpLiteral(value), null)
+		it(`rejects invalid host identity ${JSON.stringify(value)}`, () => {
+			assert.throws(
+				() => classifyHostIdentity(value),
+				new Error(`Invalid TLS host identity ${value}`)
+			)
 		})
 	}
+
+	it('classifies DNS names without changing them', () => {
+		for(const value of ['example.com', 'example.com.']) {
+			assert.deepEqual(
+				classifyHostIdentity(value),
+				{ type: 'dns', value }
+			)
+		}
+	})
 })

@@ -1,6 +1,8 @@
 import assert from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
+
+import type { X509Certificate } from '../types/x509.ts'
 import { verifyCertificateChain } from '../utils/parse-certificate.ts'
 import { loadX509FromPem } from '../utils/x509.ts'
 import { logger } from './utils.ts'
@@ -51,6 +53,30 @@ describe('certificate IP identity verification', () => {
 		await assertHostRejected(ipSanCertificate, '::ffff:192.0.2.10')
 	})
 
+	it('rejects an IP identity when a custom adapter has no IP SAN API', async() => {
+		const certificate: X509Certificate = {
+			internal: ipDnsCertificate.internal,
+			isWithinValidity: ipDnsCertificate.isWithinValidity,
+			getSubjectField: ipDnsCertificate.getSubjectField,
+			getAlternativeDNSNames: ipDnsCertificate.getAlternativeDNSNames,
+			isIssuer: ipDnsCertificate.isIssuer,
+			getPublicKey: ipDnsCertificate.getPublicKey,
+			getAIAExtension: ipDnsCertificate.getAIAExtension,
+			verifyIssued: ipDnsCertificate.verifyIssued,
+			serialiseToPem: ipDnsCertificate.serialiseToPem,
+		}
+		await assertHostRejected(certificate, '192.0.2.10')
+	})
+
+	for(const host of ['[2001:db8::1]', '2001:db8::1%eth0', '192.00.2.10']) {
+		it(`rejects invalid host identity ${host}`, async() => {
+			await assert.rejects(
+				() => verifyFixture(ipSanCertificate, host),
+				new Error(`Invalid TLS host identity ${host}`)
+			)
+		})
+	}
+
 	it('preserves DNS identity matching', async() => {
 		await verifyFixture(ipSanCertificate, 'www.example.test')
 	})
@@ -63,7 +89,7 @@ function loadFixture(file: string) {
 }
 
 async function verifyFixture(
-	certificate: typeof ipSanCertificate,
+	certificate: X509Certificate,
 	host: string
 ) {
 	await verifyCertificateChain(
@@ -76,7 +102,7 @@ async function verifyFixture(
 }
 
 async function assertHostRejected(
-	certificate: typeof ipSanCertificate,
+	certificate: X509Certificate,
 	host: string
 ) {
 	await assert.rejects(

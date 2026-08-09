@@ -3,7 +3,7 @@ import type { Key, TLSHelloBaseOptions, TLSPresharedKey, TLSProtocolVersion } fr
 import { getHash } from '../utils/decryption-utils.ts'
 import { SUPPORTED_CIPHER_SUITE_MAP, SUPPORTED_EXTENSION_MAP, SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_RECORD_TYPE_MAP, SUPPORTED_SIGNATURE_ALGS_MAP, TLS_PROTOCOL_VERSION_MAP } from './constants.ts'
 import { asciiToUint8Array, concatenateUint8Arrays, uint8ArrayToDataView } from './generics.ts'
-import { parseIpLiteral } from './ip.ts'
+import { classifyHostIdentity } from './ip.ts'
 import { packWith3ByteLength, packWithLength } from './packets.ts'
 
 type SupportedNamedCurve = keyof typeof SUPPORTED_NAMED_CURVE_MAP
@@ -58,9 +58,10 @@ export async function packClientHello({
 	const packedCipherSuites = packWithLength(
 		concatenateUint8Arrays(cipherSuiteList)
 	)
+	const identity = classifyHostIdentity(host)
 	const extensionsList = [
 		RENEGOTIATION_INFO,
-		...(parseIpLiteral(host) ? [] : [packServerNameExtension(host)]),
+		...(identity.type === 'ip' ? [] : [packServerNameExtension(host)]),
 		packSupportedGroupsExtension(keysToShare.map(k => k.type)),
 		packSessionTicketExtension(),
 		packVersionsExtension(supportedProtocolVersions),
