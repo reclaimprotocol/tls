@@ -8,7 +8,9 @@ const AIA_EXT_TYPE = '1.3.6.1.5.5.7.1.1'
 
 export function loadX509FromPem(
 	pem: string | Uint8Array
-): X509Certificate<peculiar.X509Certificate> {
+): X509Certificate<peculiar.X509Certificate> & {
+	getAlternativeIPAddresses(): string[]
+} {
 	let cert: peculiar.X509Certificate
 	try {
 		cert = new peculiar.X509Certificate(pem)
@@ -31,16 +33,10 @@ export function loadX509FromPem(
 			return cert.subjectName.getField(name)
 		},
 		getAlternativeDNSNames(): string[] {
-			// search for names in SubjectAlternativeNameExtension
-			const ext = cert.extensions
-				.find(e => e.type === '2.5.29.17') //subjectAltName
-			if(ext instanceof SubjectAlternativeNameExtension) {
-				return ext.names.items
-					.filter(n => n.type === 'dns')
-					.map(n => n.value)
-			}
-
-			return []
+			return getAlternativeNames(cert, 'dns')
+		},
+		getAlternativeIPAddresses(): string[] {
+			return getAlternativeNames(cert, 'ip')
 		},
 		isIssuer({ internal: ofCert }) {
 			var i = ofCert.issuer
@@ -70,6 +66,21 @@ export function loadX509FromPem(
 			return cert.toString('pem')
 		},
 	}
+}
+
+function getAlternativeNames(
+	cert: peculiar.X509Certificate,
+	type: 'dns' | 'ip'
+) {
+	const ext = cert.extensions
+		.find(e => e.type === '2.5.29.17') //subjectAltName
+	if(ext instanceof SubjectAlternativeNameExtension) {
+		return ext.names.items
+			.filter(n => n.type === type)
+			.map(n => n.value)
+	}
+
+	return []
 }
 
 function getSigAlgorithm(

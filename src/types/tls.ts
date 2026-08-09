@@ -100,7 +100,11 @@ export type TLSConnectionOptions = TLSHelloBaseOptions & {
 }
 
 export type TLSClientOptions = TLSConnectionOptions & TLSEventHandlers & {
-	/** the hostname of the server to connect to */
+	/**
+	 * Bare TLS reference identity: a DNS name, dotted-decimal IPv4 address,
+	 * or unbracketed IPv6 address. Do not include a port, URI brackets,
+	 * or an IPv6 zone identifier.
+	 */
 	host: string
 	/**
 	 * should it expect the last bytes of a wrapped-record
