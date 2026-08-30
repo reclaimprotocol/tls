@@ -189,19 +189,22 @@ export async function verifyCertificateChain(
 		throw new Error(`Certificate is not for host ${host}`)
 	}
 
-	chain = [...chain] // clone to allow appending fetched certs
-	for(let i = 0; i < chain.length; i++) {
-		const cert = chain[i]
+	const remainingChain = chain.slice(1)
+	let cert = leaf
+	for(let i = 0; ; i++) {
 		const cn = cert.getSubjectField('CN')
 		if(!cert.isWithinValidity()) {
 			throw new Error(`Certificate ${cn} (i: ${i}) is outside validity`)
 		}
 
-		// look in our chain for issuer
-		let issuer = findIssuer(chain.slice(i + 1), cert)
-		// if not found, check in our root CAs
+		// Prefer a trusted issuer and stop once it validates the current cert.
+		let issuer = findIssuer(rootCAs, cert)
+		const reachedTrustAnchor = Boolean(issuer)
 		if(!issuer) {
-			issuer = findIssuer(rootCAs, cert)
+			issuer = findIssuer(remainingChain, cert)
+			if(issuer) {
+				remainingChain.splice(remainingChain.indexOf(issuer), 1)
+			}
 		}
 
 		// if not found, we'll try fetching it via AIA extension
@@ -221,8 +224,6 @@ export async function verifyCertificateChain(
 
 				const bytes = await fetchCertificateBytes(aiaExt)
 				issuer = await loadX509FromPem(bytes)
-				// we'll need to verify this cert below too
-				chain.push(issuer)
 
 				TLS_INTERMEDIATE_CA_CACHE[aiaExt] = issuer
 			}
@@ -238,6 +239,12 @@ export async function verifyCertificateChain(
 				`Verification of ${cn} failed by issuer ${icn} (i: ${i})`
 			)
 		}
+
+		if(reachedTrustAnchor) {
+			return
+		}
+
+		cert = issuer
 	}
 }
 
