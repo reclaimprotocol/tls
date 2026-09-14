@@ -4,6 +4,7 @@ import type { CertificatePublicKey, CipherSuite, Key, Logger, SignatureAlgorithm
 import { SUPPORTED_NAMED_CURVE_MAP, SUPPORTED_SIGNATURE_ALGS, SUPPORTED_SIGNATURE_ALGS_MAP } from './constants.ts'
 import { getHash } from './decryption-utils.ts'
 import { areUint8ArraysEqual, asciiToUint8Array, concatenateUint8Arrays } from './generics.ts'
+import { classifyHostIdentity } from './ip.ts'
 import { MOZILLA_ROOT_CA_LIST } from './mozilla-root-cas.ts'
 import { expectReadWithLength, packWithLength } from './packets.ts'
 import { defaultFetchCertificateBytes, loadX509FromDer, loadX509FromPem } from './x509.ts'
@@ -181,11 +182,24 @@ export async function verifyCertificateChain(
 	]
 
 	const leaf = chain[0]
-	const commonNames = [
-		...leaf.getSubjectField('CN'),
-		...leaf.getAlternativeDNSNames()
-	]
-	if(!commonNames.some(cn => matchHostname(host, cn))) {
+	const identity = classifyHostIdentity(host)
+	const matchesIdentity = identity.type === 'ip'
+		? (leaf.getAlternativeIPAddresses?.() || []).some(value => {
+			let sanIdentity
+			try {
+				sanIdentity = classifyHostIdentity(value)
+			} catch{
+				return false
+			}
+
+			return sanIdentity.type === 'ip'
+				&& areUint8ArraysEqual(identity.value, sanIdentity.value)
+		})
+		: [
+			...leaf.getSubjectField('CN'),
+			...leaf.getAlternativeDNSNames()
+		].some(name => matchHostname(host, name))
+	if(!matchesIdentity) {
 		throw new Error(`Certificate is not for host ${host}`)
 	}
 
