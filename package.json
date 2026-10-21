@@ -73,7 +73,7 @@
 		"@types/node": "^22.0.0",
 		"@typescript-eslint/eslint-plugin": "^8.17.0",
 		"chance": "^1.1.12",
-		"csv-parse": "^5.6.0",
+		"csv-parse": "^7.0.2",
 		"esbuild": "^0.25.8",
 		"eslint": "^8.57.1",
 		"pino": "^9.5.0",
