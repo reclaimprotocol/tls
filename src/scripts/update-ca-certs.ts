@@ -6,7 +6,7 @@ import { loadX509FromPem } from '../utils/index.ts'
 async function main() {
 	const resp = await fetch('https://ccadb.my.salesforce-sites.com/mozilla/IncludedCACertificateReportPEMCSV')
 	const csv = await resp.text()
-	const records = parse(csv, {
+	const records = parse<Record<string, string>>(csv, {
 		columns: true,
 		// eslint-disable-next-line camelcase
 		skip_empty_lines: true
