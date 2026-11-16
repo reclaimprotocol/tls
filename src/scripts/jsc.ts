@@ -43,7 +43,7 @@ declare global {
 async function main() {
 	print(
 		'specify the host to connect to '
-			+ '(e.g. {"type":"connect", "host":"localhost:443"}):"}'
+			+ '(e.g. {"type":"connect", "host":"localhost"}):"}'
 	)
 	const initCmd = readCmd()
 	if(initCmd.type !== 'connect') {
