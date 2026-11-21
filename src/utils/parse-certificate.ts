@@ -100,15 +100,18 @@ export async function verifyCertificateSignature({
 	publicKeyType,
 }: VerifySignatureOptions) {
 	let cryptoAlg = SUPPORTED_SIGNATURE_ALGS_MAP[algorithm].algorithm as SignatureAlgorithm
-	// correct signature algorithm if needed
+	// TLS 1.2 (publicKeyType is set): the signature algorithm does not
+	// fix the curve. The curve is the one of the certificate key, not the
+	// one of the key exchange (publicKeyType).
+	const keyCurve = publicKeyType ? publicKey.namedCurve : undefined
 	if(
-		publicKeyType === 'SECP256R1'
+		keyCurve === 'P-256'
 		&& cryptoAlg.includes('SECP384R1')
 	) {
 		// @ts-expect-error
 		cryptoAlg = cryptoAlg.replace('SECP384R1', 'SECP256R1')
 	} else if(
-		publicKeyType === 'SECP384R1'
+		keyCurve === 'P-384'
 		&& cryptoAlg.includes('SECP256R1')
 	) {
 		// @ts-expect-error

@@ -64,6 +64,7 @@ export function loadX509FromPem(
 			return {
 				buffer: new Uint8Array(cert.publicKey.rawData),
 				algorithm: cert.publicKey.algorithm.name,
+				namedCurve: cert.publicKey.algorithm.namedCurve,
 			}
 		},
 		async verifyIssued(otherCert) {

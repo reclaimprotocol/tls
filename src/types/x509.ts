@@ -8,6 +8,10 @@ export type CertificatePublicKey = {
 	buffer: Uint8Array
 
 	algorithm: string
+	/**
+	 * curve of an EC key: 'P-256', 'P-384'
+	 */
+	namedCurve?: string
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
